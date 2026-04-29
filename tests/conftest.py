@@ -125,12 +125,17 @@ def cneuromod_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
         )
         _write_nifti(bold, shape=(10, 10, 10, N_VOLS))
 
-        # Brain mask (run-1 only — mask_path falls back gracefully)
+        # Brain mask (run-1 only)
         if run == 1:
             mask = bold.parent / bold.name.replace(
                 "desc-preproc_bold", "desc-brain_mask"
             )
-            _write_nifti(mask, shape=(10, 10, 10))
+            # Create a mask with some zeros so masking actually reduces the array
+            mask_data = np.zeros((10, 10, 10), dtype=np.float32)
+            mask_data[2:8, 2:8, 2:8] = 1.0
+            mask_img = nib.Nifti1Image(mask_data, np.eye(4))
+            mask_img.header.set_zooms([2.0, 2.0, 2.0])
+            nib.save(mask_img, str(mask))
 
         # Confounds TSV
         conf = bold.parent / (

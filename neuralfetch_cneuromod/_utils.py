@@ -29,7 +29,7 @@ logger = logging.getLogger(__name__)
 #: Default MNI152 template identifier used by fMRIPrep.
 DEFAULT_SPACE = "MNI152NLin2009cAsym"
 #: Default resolution string used by fMRIPrep.
-DEFAULT_RESOLUTION = None
+DEFAULT_RESOLUTION: str | None = "2"
 
 
 def bold_path(
