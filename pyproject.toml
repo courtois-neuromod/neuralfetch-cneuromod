@@ -1,0 +1,88 @@
+[project]
+name = "neuralfetch-cneuromod"
+version = "0.1.0"
+readme = "README.md"
+authors = [{ name = "Basile Pinsard" }]
+description = "NeuralFetch study classes for the Courtois NeuroMod fMRI dataset."
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.10"
+
+dependencies = [
+  "neuralfetch>=0.1.0",   # provides Datalad download backend + neuralset Study base
+  "nibabel>=5.0",
+  "pandas>=2.0",
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+# DataLad-based download support
+datalad = [
+  "datalad",
+  "datalad-installer",
+]
+# BIDS layout discovery
+bids = [
+  "pybids>=0.16",
+]
+# Nilearn for confound regression / masking
+nilearn = [
+  "nilearn>=0.10",
+]
+# Full set of optional extras
+all = [
+  "neuralfetch-cneuromod[datalad]",
+  "neuralfetch-cneuromod[bids]",
+  "neuralfetch-cneuromod[nilearn]",
+]
+# Development / testing
+dev = [
+  "pytest>=7",
+  "pytest-cov",
+  "numpy>=1.24",
+]
+
+[project.urls]
+Source = "https://github.com/courtois-neuromod/neuralfetch-cneuromod"
+Tracker = "https://github.com/courtois-neuromod/neuralfetch-cneuromod/issues"
+CNeuroMod = "https://www.cneuromod.ca/"
+
+# Register this package so neuralset auto-discovers CNeuroMod studies.
+# The value is the Python module path scanned for Study subclasses.
+[project.entry-points."neuralset.studies"]
+neuralfetch_cneuromod = "neuralfetch_cneuromod"
+
+[build-system]
+requires = ["setuptools>=64"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["neuralfetch_cneuromod*"]
+namespaces = false
+
+[tool.setuptools.package-data]
+neuralfetch_cneuromod = ["py.typed"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-v"
+
+[tool.mypy]
+plugins = ["pydantic.mypy"]
+show_error_codes = true
+
+[[tool.mypy.overrides]]
+module = [
+  "nibabel",
+  "nibabel.*",
+  "nilearn",
+  "nilearn.*",
+  "bids",
+  "bids.*",
+  "datalad",
+  "datalad.*",
+  "neuralset.*",
+  "neuralfetch.*",
+]
+ignore_missing_imports = true
