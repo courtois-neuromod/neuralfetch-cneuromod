@@ -1,8 +1,11 @@
 """Movie10 open-access Hollywood movies fMRI dataset.
 
-Six subjects watched 10 open-access Hollywood movies (under Creative Commons
-or similar licences) during 3T fMRI.  Each movie is split into multiple ~8-minute
-BOLD runs.
+Six subjects watched three Hollywood feature films ("The Bourne Supremacy" (2004), 
+"The Wolf of Wall Street" (2013), "Hidden Figures" (2016)) and one BBC nature documentary 
+("Life : Challenges of life, reptiles and amphibian mammals" (2009)) totalling ~10 hours of 
+movie watching while undergoing 3T fMRI.  
+Hidden Figure and Life were both visioned twice to support reproducibility analyses.
+Each movie was split into multiple ~10-minute BOLD runs.
 
 References
 ----------
@@ -22,16 +25,18 @@ from neuralfetch_cneuromod._utils import events_path, load_events_tsv
 
 
 class Movie10(CNeuroModStudy):
-    """Courtois NeuroMod — *Movie10* open-access movies fMRI dataset.
+    """Courtois NeuroMod — *Movie10* movie-watching fMRI dataset.
 
-    Six subjects watched 10 open-access Hollywood movies during 3T fMRI.
-    Movie titles include *Partially Blind* and other CC-licensed films.
+    Six subjects watched 10 hours of Hollywood movies/BBC documentary while 
+    undergoing 3T fMRI. Movie titles include *Life (2009) (shown twice)*,
+    *Hidden Figures (2016)*, *The Wolf of Wall Street (2013)*, and 
+    *The Bourne Supremacy (2004)*.
 
     Parameters
     ----------
     path:
-        Root data directory.  Resolves ``{path}/Movie10/bids`` and
-        ``{path}/Movie10/fmriprep``.
+        Root data directory.  Resolves ``{path}/movie10/bids`` and
+        ``{path}/movie10/fmriprep``.
     space:
         fMRIPrep output space (default ``"MNI152NLin2009cAsym"``).
     resolution:
@@ -43,7 +48,7 @@ class Movie10(CNeuroModStudy):
 
     Examples
     --------
-    >>> study = Movie10(path="/data/cneuromod")
+    >>> study = Movie10(path="/data/cneuromod.all")
     >>> events = study.run()
     """
 
@@ -53,7 +58,7 @@ class Movie10(CNeuroModStudy):
 
     dataset_name: tp.ClassVar[str] = "CNeuroMod Movie10"
     description: tp.ClassVar[str] = (
-        "Six subjects watching 10 open-access Hollywood movies during 3T fMRI."
+        "Six subjects watching 10 hours of Hollywood movies / BBC documentary during 3T fMRI."
     )
     bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
 

@@ -113,7 +113,7 @@ class CNeuroModStudy(_study.Study):
     """
 
     licence: tp.ClassVar[str] = (
-        "CC0 (subjects 01, 03, 05) / Registered access — "
+        "CC0 (subjects 01, 02, 03, 05, 06) / Registered access — "
         "see https://www.cneuromod.ca/"
     )
 
