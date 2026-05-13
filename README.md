@@ -22,15 +22,25 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 | `Gamepad` | Gamepad motor task | Motor |
 | `CNeuroModAnat` | Anatomy / structural MRI | — |
 
-## Install
+## User Install
 
 ```bash
 pip install neuralfetch-cneuromod
 # With DataLad download support:
 pip install "neuralfetch-cneuromod[datalad]"
-# Full extras:
+# With full extras (datalad, bids layout, nilearn):
 pip install "neuralfetch-cneuromod[all]"
 ```
+
+## Developer Install
+
+```bash
+# Clone the repo locally
+git clone git@github.com:courtois-neuromod/neuralfetch-cneuromod.git
+# Install packages in editable mode
+pip install -e neuralfetch-cneuromod[all,dev]
+```
+
 
 ## Quick Start
 
@@ -39,10 +49,10 @@ from neuralfetch_cneuromod.studies.friends import Friends
 
 # Point to the root folder that contains your CNeuroMod DataLad repos.
 # The study expects:
-#   /data/cneuromod/friends/bids/     (raw BIDS data)
-#   /data/cneuromod/friends/fmriprep/ (fMRIPrep derivatives)
+#   /data/cneuromod.all/friends/bids/     (raw BIDS data)
+#   /data/cneuromod.all/friends/fmriprep/ (fMRIPrep derivatives)
 
-study = Friends(path="/data/cneuromod")
+study = Friends(path="/data/cneuromod.all")
 print(study.study_summary())
 
 # Load all events as a neuralset-compatible DataFrame
