@@ -3,8 +3,8 @@
 :class:`CNeuroModStudy` extends :class:`neuralset.events.study.Study` and
 centralises:
 
-* Directory layout resolution for the two-submodule structure
-  (``{study}/bids`` and ``{study}/fmriprep``).
+* Directory layout resolution for the submodule structure
+  (e.g., ``{study}/bids`` and ``{study}/fmriprep``).
 * DataLad download logic via :class:`neuralfetch.download.Datalad` (clone +
   selective ``datalad get`` with success-file idempotency).
 * BOLD loading via :func:`~neuralfetch_cneuromod._utils.load_bold_masked`.
@@ -31,7 +31,8 @@ import numpy as np
 import pandas as pd
 import pydantic
 
-from neuralfetch.download import Datalad
+from datalad import api as dl
+#from neuralfetch.download import Datalad
 
 from neuralset.events import study as _study
 
@@ -39,6 +40,12 @@ from . import _utils
 
 
 logger = logging.getLogger(__name__)
+
+
+# GitHub URL for cneuromod.all repository, under which  
+# CNeuroMod datalad repositories are nested as a collection
+# of submodules organized per study
+_CNEUROMOD_ALL = "https://github.com/courtois-neuromod/cneuromod.all.git"
 
 # GitHub base URL for CNeuroMod datalad repositories
 _CNEUROMOD_GH = "https://github.com/courtois-neuromod/{repo}.git"
@@ -55,7 +62,7 @@ class CNeuroModStudy(_study.Study):
     path:
         Root directory under which CNeuroMod data lives.  Expected layout::
 
-            path/
+            path/cneuromod.all        ← pre-installed parent repository
             ├── {StudyName}/          ← auto-resolved subfolder
             │   ├── bids/             ← raw BIDS dataset (DataLad repo)
             │   └── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
@@ -69,13 +76,15 @@ class CNeuroModStudy(_study.Study):
     subjects:
         Restrict data loading to a subset of subject labels
         (without ``sub-`` prefix).  ``None`` includes all available subjects.
-    datalad_jobs:
-        Number of parallel jobs used by ``datalad get`` during download.
+    modalities:
+        Restrict data loading to a subset of modalities. Default ['fmriprep', 'events']
+        pulls and loads fmriprep scans in MNI space and events files. Additional 
+        modalities include ['timeseries'].
 
     Class Variables
     ---------------
     TASK : str
-        BIDS task label.  **Must** be set by every concrete subclass.
+        BIDS task label (e.g., "movie10").  **Must** be set by every concrete subclass.
     BIDS_REPO : str
         Name of the raw BIDS GitHub repository under the ``courtois-neuromod``
         organisation.  Defaults to the lower-cased class name.
@@ -95,20 +104,22 @@ class CNeuroModStudy(_study.Study):
     #: lower-cased class name (e.g. ``"friends"`` for the ``Friends`` class).
     BIDS_REPO: tp.ClassVar[str] = ""
 
-    #: GitHub repository name for the fMRIPrep derivative dataset.
+    #: GitHub repository name for the fMRIPrep and timeseries 
+    # derivative datasets, respectivaly.
     FMRIPREP_REPO: tp.ClassVar[str] = ""
+    TIMESERIES_REPO: tp.ClassVar[str] = ""
 
-    #: CNeuroMod data paper citation in BibTeX format.
+    # To be replaced with CNeuroMod data paper citation in BibTeX format.
     bibtex: tp.ClassVar[str] = """
-    @article{boyle2023iterative,
-        title={An iterative approach for fitting generative models in an
-        individual fMRI study using BOLD data collected across many imaging
-        sessions (the Courtois NeuroMod Project)},
-        author={Boyle, Jéremy and Pinsard, Basile and Bellec, Pierre and
-        others},
-        journal={NeuroImage},
-        year={2023},
-        doi={10.1016/j.neuroimage.2023.120137}
+    @article{boyle2020CCNposter,
+        title={CNeuroMod, an open fMRI dataset with diverse naturalistic & 
+        controlled tasks to build NeuroAI models},
+        author={Boyle, Julie and Pinsard, Basile and St-Laurent, Marie 
+        and Bellec, Lune},
+        howpublished = {Poster presented at the OHBM 2026 Annual Meeting},
+        address      = {Bordeaux, France},
+        year={2026},
+        month = {July},
     }
     """
 
@@ -123,6 +134,9 @@ class CNeuroModStudy(_study.Study):
     # Pydantic fields
     # -----------------------------------------------------------------
 
+    # TODO: adjust/expand to handle different types of timeseries
+    #: Modalities pulled with ``datalad get``.
+    modalities: list[str] = ['fmriprep', 'events']
     #: fMRIPrep output space template.
     space: str | None = _utils.DEFAULT_SPACE
     #: Template resolution label.
@@ -135,6 +149,7 @@ class CNeuroModStudy(_study.Study):
     # Private attributes set during model_post_init
     _bids_dir: Path = pydantic.PrivateAttr(default=None)  # type: ignore[assignment]
     _fmriprep_dir: Path = pydantic.PrivateAttr(default=None)  # type: ignore[assignment]
+    _timeseries_dir: Path = pydantic.PrivateAttr(default=None)  # type: ignore[assignment]
 
     # -----------------------------------------------------------------
     # Pydantic lifecycle
@@ -145,42 +160,44 @@ class CNeuroModStudy(_study.Study):
         super().model_post_init(log__)
         # self.path has already been resolved to the study subfolder by the
         # parent Study.model_post_init (which appends the class name if needed).
-        self._bids_dir = self._resolve_subdir("bids", self._bids_repo_name())
-        self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_name())
+        self._bids_dir = self._resolve_subdir("bids", self._bids_repo_url())
+        self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_url())
+        self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
         self.infra_timelines.cluster = None
 
     # -----------------------------------------------------------------
     # Directory resolution
     # -----------------------------------------------------------------
 
-    def _resolve_subdir(self, folder: str, repo_name: str) -> Path:
-        """Return the path to a DataLad-managed or manually cloned sub-repo.
+    def _resolve_subdir(self, folder: str, repo_url: str) -> Path:
+        """Return full the path to a study's cloned sub-repository.
 
-        :class:`neuralfetch.download.Datalad` clones into
-        ``dset_dir / folder / repo_name``.  Pre-existing manually cloned repos
-        are often placed directly at ``path / folder``.  This method tries both
-        conventions in order.
+        If the sub-repository exists at ``self.path / folder`` (pre-cloned 
+        manually or automatically during a previous study instantiation), 
+        the script returns the repository's full path. 
+
+        If the sub-repository does not exist, the script uses the repository's
+        url to clone it with DataLad as ``self.path / folder``.   
 
         Parameters
         ----------
         folder:
-            Sub-directory name under :attr:`path` (``"bids"`` or
-            ``"fmriprep"``).
-        repo_name:
-            Repository name as derived from the GitHub URL (used by the
-            :class:`~neuralfetch.download.Datalad` convention).
+            Sub-directory name under :attr:`path` (``"bids"``, 
+            ``"fmriprep" or "timeseries"``).
+        repo_url:
+            Repository GitHub URL.
 
         Returns
         -------
         Path
-            The resolved path (which may not yet exist on disk).
+            The full path to the cloned sub-repository.
         """
-        # Datalad-managed layout: path/folder/repo_name
-        datalad_managed = self.path / folder / repo_name
-        if datalad_managed.exists():
-            return datalad_managed
-        # Flat layout (manually cloned): path/folder
-        return self.path / folder
+        sub_path = self.path / folder
+
+        if not sub_path.exists():
+            dl.clone(source=repo_url, path=sub_path)
+
+        return sub_path
 
     # -----------------------------------------------------------------
     # Directory accessors
@@ -208,6 +225,18 @@ class CNeuroModStudy(_study.Study):
         """
         return self._fmriprep_dir
 
+    @property
+    def timeseries_dir(self) -> Path:
+        """Path to the timeseries DataLad repository.
+
+        Returns
+        -------
+        Path
+            ``{path}/timeseries``
+        """
+        return self._timeseries_dir
+
+    # TODO: consider adjusting in scenarios where train w timeseries (no need pull fmriprep)
     def _check_dirs(self) -> None:
         """Raise informative errors when expected directories are absent."""
         if not self._fmriprep_dir.exists():
@@ -223,15 +252,15 @@ class CNeuroModStudy(_study.Study):
 
     def _bids_repo_name(self) -> str:
         """Repository name for the raw BIDS dataset (without ``.git`` suffix)."""
-        url = self._bids_repo_url()
-        name = Path(url).name
-        return name[:-4] if name.endswith(".git") else name
+        return self.BIDS_REPO
 
     def _fmriprep_repo_name(self) -> str:
         """Repository name for the fMRIPrep derivative dataset."""
-        url = self._fmriprep_repo_url()
-        name = Path(url).name
-        return name[:-4] if name.endswith(".git") else name
+        return self.FMRIPREP_REPO
+
+    def _timeseries_repo_name(self) -> str:
+        """Repository name for the timeseries derivative dataset."""
+        return self.TIMESERIES_REPO
 
     def _bids_repo_url(self) -> str:
         """GitHub SSH URL for the raw BIDS dataset."""
@@ -240,10 +269,11 @@ class CNeuroModStudy(_study.Study):
 
     def _fmriprep_repo_url(self) -> str:
         """GitHub SSH URL for the fMRIPrep derivative dataset."""
-        if self.FMRIPREP_REPO:
-            return _CNEUROMOD_GH.format(repo=self.FMRIPREP_REPO)
-        bids_repo = self.BIDS_REPO or self.__class__.__name__.lower()
-        return _CNEUROMOD_GH.format(repo=f"{bids_repo}.fmriprep")
+        return _CNEUROMOD_GH.format(repo=self.FMRIPREP_REPO)
+
+    def _timeseries_repo_url(self) -> str:
+        """GitHub SSH URL for the timeseries derivative dataset."""
+        return _CNEUROMOD_GH.format(repo=self.TIMESERIES_REPO)
 
     # -----------------------------------------------------------------
     # Download pattern builders
@@ -347,10 +377,10 @@ class CNeuroModStudy(_study.Study):
     def _download(self) -> None:
         """Clone and selectively fetch BIDS and fMRIPrep DataLad repositories.
 
-        Delegates to :class:`_CNeuroModDatalad` (a subclass of
-        :class:`~neuralfetch.download.Datalad`) which passes BIDS glob
-        patterns directly to ``datalad get``, enabling file-level selectivity:
+        Resolves main study path, clones repositories and pulls files 
+        selectively by passing BIDS glob patterns to ``datalad get``.
 
+        Pulled files include:
         * **BIDS** — cloned; only ``*_events.tsv`` and ``*_scans.tsv``
           matching the configured task and subjects are fetched.  Stimuli are
           left as git-annex pointers.
@@ -383,6 +413,8 @@ class CNeuroModStudy(_study.Study):
             cls_name, self.space, self.resolution, fmriprep_patterns,
         )
 
+        # TODO: replace w simpler class importer from utils
+        # TODO: implement to clone and get depending if in cneuromod.all or not
         # --- Raw BIDS: clone + fetch events/scans only ---
         bids_dl = Datalad(
             study=f"{cls_name}_bids",
@@ -405,6 +437,7 @@ class CNeuroModStudy(_study.Study):
         )
         fmriprep_dl.download()
 
+        # TODO: adjust this
         # Re-resolve directory pointers now that repos exist on disk
         self._bids_dir = self._resolve_subdir("bids", bids_dl.repo_name)
         self._fmriprep_dir = self._resolve_subdir("fmriprep", fmriprep_dl.repo_name)
@@ -430,6 +463,7 @@ class CNeuroModStudy(_study.Study):
         FileNotFoundError
             If :attr:`fmriprep_dir` does not exist.
         """
+        # TODO: add option to iterate over timeseries
         self._check_dirs()
         yield from _utils.iter_bids_runs(
             self._fmriprep_dir,

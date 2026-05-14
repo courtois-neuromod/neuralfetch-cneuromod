@@ -55,6 +55,7 @@ class Movie10(CNeuroModStudy):
     TASK: tp.ClassVar[str] = "movie10"
     BIDS_REPO: tp.ClassVar[str] = "movie10"
     FMRIPREP_REPO: tp.ClassVar[str] = "movie10.fmriprep"
+    TIMESERIES_REPO: tp.ClassVar[str] = "movie10.timeseries"
 
     dataset_name: tp.ClassVar[str] = "CNeuroMod Movie10"
     description: tp.ClassVar[str] = (

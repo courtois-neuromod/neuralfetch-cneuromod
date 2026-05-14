@@ -42,44 +42,75 @@ pip install -e neuralfetch-cneuromod[all,dev]
 ```
 
 
-## Quick Start
+## Accessing the CNeuroMod Dataset
 
-```python
-from neuralfetch_cneuromod.studies.friends import Friends
+CNeuroMod data is organized as a datalad super-dataset with one submodule per study/derivative. 
 
-# Point to the root folder that contains your CNeuroMod DataLad repos.
-# The study expects:
-#   /data/cneuromod.all/friends/bids/     (raw BIDS data)
-#   /data/cneuromod.all/friends/fmriprep/ (fMRIPrep derivatives)
-
-study = Friends(path="/data/cneuromod.all")
-print(study.study_summary())
-
-# Load all events as a neuralset-compatible DataFrame
-events = study.run()
-
-# Optionally download the DataLad repos first (requires SSH key + access):
-study.download()
-```
-
-## CNeuroMod Data Structure
-
-CNeuroMod data is organized as a datalad super-dataset with one submodule per study/derivative:
-
+**CNeuroMod Data Structure**
 ```
 cneuromod.all/
 ├── friends/
 │   ├── bids/          ← raw BIDS (MRI, events, stimuli)
-│   └── fmriprep/      ← fMRIPrep derivatives
+│   ├── fmriprep/      ← fMRIPrep derivatives (preprocessed BOLD)
+│   └── timeseries/    ← masked and denoised BOLD timeseries
 ├── harrypotter/
 │   ├── bids/
-│   └── fmriprep/
+│   ├── fmriprep/
+│   └── timeseries/
 └── ...
 ```
 
-Each study class reads from `{path}/{study_name}/bids` and `{path}/{study_name}/fmriprep`.
-The `path` can point directly to the study root or to the super-dataset root — the class resolves
-its subfolder automatically.
+Use the [DataLad software](https://www.datalad.org/) (see **User / Developer Install**) to clone the super-dataset repository from Github. This step only downloads symbolic links used to retrieve the data files (no large files are downloaded).
+
+```bash
+datalad clone git@github.com:courtois-neuromod/cneuromod.all.git
+```
+A warning message will be thrown because the remote origin does not have git-annex installed. This issue will not prevent the installation.
+
+Download symbolic links to data files stored in submodules nested per study. Navigate to a study folder, and use `datalad get` to pull links per submodule (no large files downloaded).
+
+E.g.,
+```bash
+cd cneuromod.all/friends
+datalad get bids/*
+datalad get fmriprep/*
+```
+
+Use the Study classes to perform a selective download of the files you need for modelling with `datalad get`. The downloading step takes a long time, but it only needs to be performed once when you first instantiate a new Study class.  
+
+
+## Quick Start
+
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+# The study path can point to the cloned cneuromod.all repository (RECOMMENDED), 
+# to a specific study subfolder (e.g., `cneuromod.all/friends`). 
+
+# Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). If that folder is empty or non-existent, the study class will
+# use DataLad to clone and pull from the proper set of repositories.
+
+# In either scenario, the study class resolves its subfolder structure 
+# automatically. 
+
+study = Friends(path="path/to/cneuromod.all")
+print(study.study_summary())
+
+# By default, the Study class tracks fMRI data processed with fMRIprep.
+# Use the `modalities` parameter to track pre-masked, pre-denoised fMRI timeseries.
+# e.g., study = Friends(path="path/to/cneuromod.all", modalities=['timeseries', 'events'])
+
+# Load all events as a neuralset-compatible DataFrame
+# This step uses `datalad get` to download files selectively, 
+# i.e., the first attempt is much slowed than subsequent ones
+events = study.run()
+
+# Optionally, you can pre-download data files as a separate step 
+# (requires SSH key + access) before `study.run()`:
+study.download()
+```
+
 
 ## License
 
