@@ -65,21 +65,21 @@ class CNeuroModStudy(_study.Study):
             path/cneuromod.all        ← pre-installed parent repository
             ├── {StudyName}/          ← auto-resolved subfolder
             │   ├── bids/             ← raw BIDS dataset (DataLad repo)
-            │   └── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
+            │   ├── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
+            │   └── timeseries/       ← masked and denoised BOLD timeseries (DataLad repo)
 
         Alternatively, *path* can point directly to the study-level directory
         (i.e. the one that contains ``bids/`` and ``fmriprep/`` sub-dirs).
     space:
         fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``).
-    resolution:
-        Template resolution label (default ``"2"``).
+    timeseries:
+        Define to model pre-extracted, masked, denoised and normalized timeseries, 
+        rather than the fMRIPrep BOLD derivatives. Select among ``"cneuromod2026"``, 
+        ``"schaefer1000"`` (algonauts 2025 competition), ``"voxel_mni"`` or ``"voxel_native"``.
+        (default ``None``) .
     subjects:
         Restrict data loading to a subset of subject labels
         (without ``sub-`` prefix).  ``None`` includes all available subjects.
-    modalities:
-        Restrict data loading to a subset of modalities. Default ['fmriprep', 'events']
-        pulls and loads fmriprep scans in MNI space and events files. Additional 
-        modalities include ['timeseries'].
 
     Class Variables
     ---------------
@@ -135,12 +135,10 @@ class CNeuroModStudy(_study.Study):
     # -----------------------------------------------------------------
 
     # TODO: adjust/expand to handle different types of timeseries
-    #: Modalities pulled with ``datalad get``.
-    modalities: list[str] = ['fmriprep', 'events']
     #: fMRIPrep output space template.
     space: str | None = _utils.DEFAULT_SPACE
-    #: Template resolution label.
-    resolution: str | None = _utils.DEFAULT_RESOLUTION
+    #: Define to model pre-extracted timeseries rather than fMRIprep output
+    timeseries: str | None = None
     #: Restrict to a subset of subjects (labels without ``sub-`` prefix).
     subjects: list[str] | None = None
     #: Parallel jobs for ``datalad get`` during download.
@@ -161,8 +159,10 @@ class CNeuroModStudy(_study.Study):
         # self.path has already been resolved to the study subfolder by the
         # parent Study.model_post_init (which appends the class name if needed).
         self._bids_dir = self._resolve_subdir("bids", self._bids_repo_url())
-        self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_url())
-        self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
+        if self.timeseries is None:
+            self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_url())
+        else:
+            self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
         self.infra_timelines.cluster = None
 
     # -----------------------------------------------------------------
@@ -236,16 +236,6 @@ class CNeuroModStudy(_study.Study):
         """
         return self._timeseries_dir
 
-    # TODO: consider adjusting in scenarios where train w timeseries (no need pull fmriprep)
-    def _check_dirs(self) -> None:
-        """Raise informative errors when expected directories are absent."""
-        if not self._fmriprep_dir.exists():
-            raise FileNotFoundError(
-                f"fMRIPrep directory not found: {self._fmriprep_dir}\n"
-                f"Run study.download() or clone the DataLad repo manually:\n"
-                f"  datalad clone {self._fmriprep_repo_url()} {self._fmriprep_dir}"
-            )
-
     # -----------------------------------------------------------------
     # Repository URL / name helpers
     # -----------------------------------------------------------------
@@ -301,7 +291,6 @@ class CNeuroModStudy(_study.Study):
         Only files needed for study design / event modelling are targeted:
 
         * ``*_events.tsv`` — trial onset / duration / type annotations
-        * ``*_scans.tsv`` — session-level scan metadata (when present)
 
         Stimuli (video, audio, image files) are intentionally excluded because
         they can be very large and are not required for fMRI modelling.
@@ -313,14 +302,11 @@ class CNeuroModStudy(_study.Study):
             passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
-        task = self.TASK
         patterns = []
         for sub in self._subject_globs():
             patterns.extend([
-                # Functional events TSVs for this task (with session)
-                f"{sub}/ses-*/func/{sub}_ses-*_task-{task}_*_events.tsv",
-                # Functional events TSVs for this task (without session)
-                f"{sub}/func/{sub}_task-{task}_*_events.tsv",
+                # Functional events TSVs for this task
+                f"{self.path}/bids/{sub}/ses-*/func/{sub}_ses-*_task-*_events.tsv",
             ])
         return patterns
 
@@ -330,13 +316,12 @@ class CNeuroModStudy(_study.Study):
         Only files required for analysis in the configured output space are
         targeted:
 
-        * ``desc-preproc_bold.nii.gz`` — preprocessed BOLD in ``space``/``res``
+        * ``desc-preproc_bold.nii.gz`` — preprocessed BOLD in ``space``
         * ``desc-confounds_timeseries.tsv`` — nuisance confound regressors
-        * ``desc-brain_mask.nii.gz`` — brain mask in ``space``/``res``
+        * ``desc-brain_mask.nii.gz`` — brain mask in ``space``
 
-        All patterns are restricted to the task specified by :attr:`TASK` and
-        to the subjects given by :attr:`subjects` (or all subjects when
-        ``subjects`` is ``None``).
+        All patterns are restricted to the subjects given by the :attr:`subjects` 
+        (or all subjects when ``subjects`` is ``None``).
 
         Returns
         -------
@@ -344,29 +329,64 @@ class CNeuroModStudy(_study.Study):
             Glob patterns relative to the fMRIPrep repository root. Patterns
             are python glob compatible.
         """
-        task = self.TASK
-        space = self.space
-        res = self.resolution
-        space_res = f"space-{space}"
-        if res is not None:
-            space_res += f"_res-{res}"
+        space = f"space-{self.space}"
         patterns = []
         for sub in self._subject_globs():
             patterns.extend([
-                # Preprocessed BOLD in the target space / resolution (with session)
-                f"{sub}/ses-*/func/{sub}_ses-*_task-{task}*_{space_res}_desc-preproc_bold.nii.gz",
-                # Preprocessed BOLD (without session)
-                f"{sub}/func/{sub}_task-{task}*_{space_res}_desc-preproc_bold.nii.gz",
+                # Preprocessed BOLD in the target space
+                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"task-*_{space}_desc-preproc_bold.nii.gz",
                 
-                # Confound regressors (with session)
-                f"{sub}/ses-*/func/{sub}_ses-*_task-{task}*_desc-confounds_timeseries.tsv",
-                # Confound regressors (without session)
-                f"{sub}/func/{sub}_task-{task}*_desc-confounds_timeseries.tsv",
+                # Confound regressors
+                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"task-*_desc-confounds_timeseries.tsv",
                 
-                # Brain mask in the target space / resolution (with session)
-                f"{sub}/ses-*/func/{sub}_ses-*_task-{task}*_{space_res}_desc-brain_mask.nii.gz",
-                # Brain mask (without session)
-                f"{sub}/func/{sub}_task-{task}*_{space_res}_desc-brain_mask.nii.gz",
+                # Brain mask in the target space
+                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"task-*_{space}_desc-brain_mask.nii.gz",
+            ])
+        return patterns
+
+patterns.extend([
+    # Preprocessed BOLD in the target space
+    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+    f"task-*_{space}_desc-preproc_bold.nii.gz",
+    # Confound regressors
+    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+    f"task-*_desc-confounds_timeseries.tsv",
+    # Brain mask in the target space
+    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+    f"task-*_{space}_desc-brain_mask.nii.gz",
+])
+
+
+    def _timeseries_download_patterns(self) -> list[str]:
+        """Build timeseries derivative glob patterns for the configured space.
+
+        Only files required for analysis in the configured output space are
+        targeted:
+
+        * ``desc-preproc_bold.nii.gz`` — preprocessed BOLD in ``space``
+
+        All patterns are restricted to the timeseries specified by :attr:`timeseries`, 
+        and to the subjects given by :attr:`subjects` (or all subjects when 
+        ``subjects`` is ``None``).
+
+        Returns
+        -------
+        list[str]
+            Glob patterns relative to the timeseries repository root. Patterns
+            are python glob compatible.
+        """
+        task = self.TASK
+        tseries = self.timeseries
+        ts_desc = _utils.TSERIES_DESCRIPT[tseries]
+        space = f"space-{self.space}"
+        patterns = []
+        for sub in self._subject_globs():
+            patterns.extend([
+                # BOLD timeseries in the target space
+                f"timeseries/{tseries}/{sub}/{sub}_task-{task}_{space}_{ts_desc}_timeseries.h5",
             ])
         return patterns
 
@@ -375,26 +395,24 @@ class CNeuroModStudy(_study.Study):
     # -----------------------------------------------------------------
 
     def _download(self) -> None:
-        """Clone and selectively fetch BIDS and fMRIPrep DataLad repositories.
+        """Selectively fetch data files from BIDS and fMRIPrep / 
+        timeseries DataLad repositories.
 
-        Resolves main study path, clones repositories and pulls files 
-        selectively by passing BIDS glob patterns to ``datalad get``.
+        Pulls files selectively by passing BIDS glob patterns to ``datalad get``.
 
         Pulled files include:
         * **BIDS** — cloned; only ``*_events.tsv`` and ``*_scans.tsv``
-          matching the configured task and subjects are fetched.  Stimuli are
+          matching the configured subjects are fetched.  Stimuli are
           left as git-annex pointers.
         * **fMRIPrep** — cloned; only the preprocessed BOLD, confounds TSV,
-          and brain mask for the configured ``space`` / ``resolution`` and
-          subjects are fetched.
+          and brain mask for the configured subjects are fetched.
+        * **timeseries** — cloned; only the .hdf5 files, with timeseries nested per
+        session and run, are fecthed for the configured ``timeseries`` and subjects 
+        are fetched.
 
-        The patterns are built by :meth:`_bids_download_patterns` and
-        :meth:`_fmriprep_download_patterns` from the current field values.
-        Idempotency is managed by the success files written by
-        :class:`~neuralfetch.download.Datalad`.
-
-        After download, :attr:`bids_dir` and :attr:`fmriprep_dir` are
-        re-resolved to point at the correct paths.
+        The patterns are built by :meth:`_bids_download_patterns`,
+        :meth:`_fmriprep_download_patterns` and :meth:`_timeseries_download_patterns` 
+        from the current field values.
 
         Raises
         ------
@@ -402,45 +420,31 @@ class CNeuroModStudy(_study.Study):
             If DataLad / git-annex is not installed or operations fail.
         """
         cls_name = self.__class__.__name__
-        bids_patterns = self._bids_download_patterns()
-        fmriprep_patterns = self._fmriprep_download_patterns()
 
+        bids_patterns = self._bids_download_patterns()
         logger.info(
             "[%s] BIDS patterns: %s", cls_name, bids_patterns
         )
-        logger.info(
-            "[%s] fMRIPrep patterns (space=%s, res=%s): %s",
-            cls_name, self.space, self.resolution, fmriprep_patterns,
-        )
+        for bids_pattern in bids_patterns:
+            dl.get(path=sorted(glob.glob(bids_pattern)), dataset=f"{self.path}/bids", jobs="auto")
 
-        # TODO: replace w simpler class importer from utils
-        # TODO: implement to clone and get depending if in cneuromod.all or not
-        # --- Raw BIDS: clone + fetch events/scans only ---
-        bids_dl = Datalad(
-            study=f"{cls_name}_bids",
-            dset_dir=self.path,
-            folder="bids",
-            repo_url=self._bids_repo_url(),
-            threads=self.datalad_jobs,
-            paths=bids_patterns,
-        )
-        bids_dl.download()
+        if self.timeseries is None:
+            fmriprep_patterns = self._fmriprep_download_patterns()
+            logger.info(
+                "[%s] fMRIPrep patterns (space=%s): %s",
+                cls_name, self.space, fmriprep_patterns,
+            )
+            for fmriprep_pattern in fmriprep_patterns:
+                dl.get(path=sorted(glob.glob(fmriprep_pattern)), dataset=f"{self.path}/fmriprep", jobs="auto")
 
-        # --- fMRIPrep: clone + fetch space/subject-specific files ---
-        fmriprep_dl = Datalad(
-            study=f"{cls_name}_fmriprep",
-            dset_dir=self.path,
-            folder="fmriprep",
-            repo_url=self._fmriprep_repo_url(),
-            threads=self.datalad_jobs,
-            paths=fmriprep_patterns,
-        )
-        fmriprep_dl.download()
-
-        # TODO: adjust this
-        # Re-resolve directory pointers now that repos exist on disk
-        self._bids_dir = self._resolve_subdir("bids", bids_dl.repo_name)
-        self._fmriprep_dir = self._resolve_subdir("fmriprep", fmriprep_dl.repo_name)
+        else:
+            timeseries_patterns = self._timeseries_download_patterns()
+            logger.info(
+                "[%s] timeseries patterns (timeseries=%s): %s",
+                cls_name, self.timeseries, fmriprep_patterns,
+            )
+            for timeseries_pattern in timeseries_patterns:
+                dl.get(path=sorted(glob.glob(timeseries_pattern)), dataset=f"{self.path}/timeseries", jobs="auto")
 
     # -----------------------------------------------------------------
     # Timeline iteration
@@ -464,14 +468,13 @@ class CNeuroModStudy(_study.Study):
             If :attr:`fmriprep_dir` does not exist.
         """
         # TODO: add option to iterate over timeseries
-        self._check_dirs()
+        #self._check_dirs()
         yield from _utils.iter_bids_runs(
             self._fmriprep_dir,
             self._bids_dir if self._bids_dir.exists() else None,
             self.TASK,
             subjects=self.subjects,
             space=self.space,
-            resolution=self.resolution,
         )
 
     # -----------------------------------------------------------------
@@ -505,7 +508,7 @@ class CNeuroModStudy(_study.Study):
         bp = _utils.bold_path(
             self._fmriprep_dir, sub, task,
             session=ses, run=run,
-            space=self.space, resolution=self.resolution,
+            space=self.space,
         )
         if not bp.exists():
             raise FileNotFoundError(
@@ -599,8 +602,8 @@ class CNeuroModStudy(_study.Study):
         # Derive TR from the NIfTI header pixdim[4]
         tr_s: float = float(bold_img.header.get_zooms()[3])  # type: ignore[index]
         if tr_s <= 0:
-            logger.warning("TR could not be read from NIfTI header; defaulting to 1.0 s")
-            tr_s = 1.0
+            logger.warning("TR could not be read from NIfTI header; defaulting to 1.49 s")
+            tr_s = 1.49
 
         fmri_row: dict[str, tp.Any] = {
             "type": "Fmri",
@@ -611,7 +614,7 @@ class CNeuroModStudy(_study.Study):
                 _utils.bold_path(
                     self._fmriprep_dir, sub, task,
                     session=ses, run=run,
-                    space=self.space, resolution=self.resolution,
+                    space=self.space,
                 )
             ),
             "space": self.space,

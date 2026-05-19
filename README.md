@@ -107,7 +107,8 @@ print(study.study_summary())
 events = study.run()
 
 # Optionally, you can pre-download data files as a separate step 
-# (requires SSH key + access) before `study.run()`:
+# (requires SSH key + access) before `study.run()`
+# Consider running inside tmux
 study.download()
 ```
 

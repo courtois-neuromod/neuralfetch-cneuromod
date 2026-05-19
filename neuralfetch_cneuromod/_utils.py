@@ -30,6 +30,14 @@ logger = logging.getLogger(__name__)
 DEFAULT_SPACE = "MNI152NLin2009cAsym"
 #: Default resolution string used by fMRIPrep.
 DEFAULT_RESOLUTION: str | None = "2"
+#: Timeseries file name descriptor 
+TSERIES_DESCRIPT = {
+    "cneuromod2026": "atlas-cneuromod26_desc-1134Parcels",
+    "schaefer1000": "atlas-Schaefer18_desc-1000Parcels7Networks",
+    "voxel_mni": "desc-voxelwise",
+    "voxel_native": "desc-voxelwise",
+}
+
 
 
 def bold_path(
@@ -40,7 +48,6 @@ def bold_path(
     session: str | None = None,
     run: str | int | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
     suffix: str = "bold",
     extension: str = ".nii.gz",
 ) -> Path:
@@ -63,8 +70,6 @@ def bold_path(
         ``run-`` entity is omitted from the filename.
     space:
         fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``).
-    resolution:
-        Template resolution label (default ``"2"``).
     suffix:
         BIDS suffix (default ``"bold"``).
     extension:
@@ -89,8 +94,6 @@ def bold_path(
         entities.append(f"run-{run}")
     if space is not None:
         entities.append(f"space-{space}")
-    if resolution is not None:
-        entities.append(f"res-{resolution}")
     entities.append(f"desc-preproc_{suffix}")
 
     fname = "_".join(entities) + extension
@@ -151,7 +154,6 @@ def mask_path(
     session: str | None = None,
     run: str | int | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
 ) -> Path:
     """Return the expected path to a fMRIPrep brain mask NIfTI.
 
@@ -169,8 +171,6 @@ def mask_path(
         Run index or label; omitted when ``None``.
     space:
         fMRIPrep output space template.
-    resolution:
-        Template resolution label.
 
     Returns
     -------
@@ -191,8 +191,6 @@ def mask_path(
         entities.append(f"run-{run}")
     if space is not None:
         entities.append(f"space-{space}")
-    if resolution is not None:
-        entities.append(f"res-{resolution}")
     entities.append("desc-brain_mask")
 
     fname = "_".join(entities) + ".nii.gz"
@@ -308,7 +306,6 @@ def get_bold_runs(
     *,
     session: str | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
 ) -> list[str | None]:
     """Return sorted list of run labels for which a preproc BOLD file exists.
 
@@ -327,8 +324,6 @@ def get_bold_runs(
         BIDS session label without ``ses-`` prefix.
     space:
         fMRIPrep output space template.
-    resolution:
-        Template resolution label.
 
     Returns
     -------
@@ -352,8 +347,6 @@ def get_bold_runs(
     ]
     if space is not None:
         pattern_parts.append(f"_space-{space}")
-    if resolution is not None:
-        pattern_parts.append(f"_res-{resolution}")
     pattern_parts.append("_desc-preproc_bold.nii.gz")
     
     pattern = "".join(pattern_parts)
@@ -455,7 +448,6 @@ def iter_bids_runs(
     *,
     subjects: list[str] | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
 ) -> Iterator[dict[str, Any]]:
     """Iterate over all available (subject, session, run) triples in *fmriprep_dir*.
 
@@ -478,8 +470,6 @@ def iter_bids_runs(
         Defaults to all subjects found in *fmriprep_dir*.
     space:
         fMRIPrep output space template.
-    resolution:
-        Template resolution label.
 
     Yields
     ------
@@ -493,22 +483,13 @@ def iter_bids_runs(
 
     for sub in available_subjects:
         sessions = get_sessions(fmriprep_dir, sub)
-        if not sessions:
-            # session-less dataset
+        for ses in sessions:
             runs = get_bold_runs(
-                fmriprep_dir, sub, task, session=None,
-                space=space, resolution=resolution
+                fmriprep_dir, sub, task, 
+                session=ses, space=space,
             )
             for run in runs:
-                yield dict(subject=sub, session=None, run=run, task=task)
-        else:
-            for ses in sessions:
-                runs = get_bold_runs(
-                    fmriprep_dir, sub, task, session=ses,
-                    space=space, resolution=resolution
-                )
-                for run in runs:
-                    yield dict(subject=sub, session=ses, run=run, task=task)
+                yield dict(subject=sub, session=ses, run=run, task=task)
 
 
 def load_bold_masked(
