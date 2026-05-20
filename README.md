@@ -86,9 +86,10 @@ Use the Study classes to perform a selective download of the files you need for 
 from neuralfetch_cneuromod.studies.friends import Friends
 
 # The study path can point to the cloned cneuromod.all repository (RECOMMENDED), 
-# to a specific study subfolder (e.g., `cneuromod.all/friends`). 
+# or to a specific study subfolder (e.g., `path/to/cneuromod.all/friends`). 
 
-# Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). If that folder is empty or non-existent, the study class will
+# Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). 
+# If that folder is empty or non-existent, the study class will
 # use DataLad to clone and pull from the proper set of repositories.
 
 # In either scenario, the study class resolves its subfolder structure 
@@ -98,17 +99,17 @@ study = Friends(path="path/to/cneuromod.all")
 print(study.study_summary())
 
 # By default, the Study class tracks fMRI data processed with fMRIprep.
-# Use the `modalities` parameter to track pre-masked, pre-denoised fMRI timeseries.
-# e.g., study = Friends(path="path/to/cneuromod.all", modalities=['timeseries', 'events'])
+# Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries.
+# e.g., study = Friends(path="path/to/cneuromod.all", timeseries='cneuromod2026')
 
 # Load all events as a neuralset-compatible DataFrame
 # This step uses `datalad get` to download files selectively, 
-# i.e., the first attempt is much slowed than subsequent ones
+# Warning: the first attempt is much slowed than subsequent ones
 events = study.run()
 
 # Optionally, you can pre-download data files as a separate step 
 # (requires SSH key + access) before `study.run()`
-# Consider running inside tmux
+# Consider running this step inside tmux
 study.download()
 ```
 
