@@ -407,9 +407,7 @@ class CNeuroModStudy(_study.Study):
         logger.info(
             "[%s] BIDS patterns: %s", cls_name, bids_patterns
         )
-        _utils.datalad_get_list(bids_patterns, dataset=f"{self.path}/bids")
-        for bids_pattern in bids_patterns:
-            dl.get(path=sorted(glob.glob(bids_pattern)), dataset=f"{self.path}/bids", jobs="auto")
+        _utils.datalad_get_list(bids_patterns, f"{self.path}/bids")
 
         if self.timeseries is None:
             fmriprep_patterns = self._fmriprep_download_patterns()
@@ -419,9 +417,6 @@ class CNeuroModStudy(_study.Study):
             )
             _utils.datalad_get_list(fmriprep_patterns, f"{self.path}/fmriprep")
 
-            for fmriprep_pattern in fmriprep_patterns:
-                dl.get(path=sorted(glob.glob(fmriprep_pattern)), dataset=f"{self.path}/fmriprep", jobs="auto")
-
         else:
             timeseries_patterns = self._timeseries_download_patterns()
             logger.info(
@@ -429,8 +424,6 @@ class CNeuroModStudy(_study.Study):
                 cls_name, self.timeseries, fmriprep_patterns,
             )
             _utils.datalad_get_list(timeseries_patterns, f"{self.path}/timeseries")
-            for timeseries_pattern in timeseries_patterns:
-                dl.get(path=sorted(glob.glob(timeseries_pattern)), dataset=f"{self.path}/timeseries", jobs="auto")
 
     # -----------------------------------------------------------------
     # Timeline iteration
