@@ -433,14 +433,16 @@ class CNeuroModStudy(_study.Study):
     def iter_timelines(self) -> tp.Iterator[dict[str, tp.Any]]:
         """Iterate over all available (subject, session, run) triples.
 
-        Uses :func:`~neuralfetch_cneuromod._utils.iter_bids_runs` to discover
+        * **BOLD** — Uses :func:`~neuralfetch_cneuromod._utils.iter_bids_runs` to discover
         available preprocessed BOLD files in the fMRIPrep directory.
+        * **Timeseries** — Uses :func:`~neuralfetch_cneuromod._utils.iter_tseries_runs` 
+        to discover pre-extracted timeseries nested in .h5 files in the timeseries directory.
 
         Yields
         ------
         dict
-            Keys: ``subject`` (str), ``session`` (str),
-            ``task`` (str), ``run`` (str | None).
+            Keys: ``subject`` (str), ``session`` (str), ``file_path`` (str | None), 
+            ``task`` (str | None), ``run`` (str | None).
 
         Raises
         ------
@@ -454,19 +456,21 @@ class CNeuroModStudy(_study.Study):
                 space=self.space,
             )
         else:
-            # TODO: implement option to iterate over timeseries
             yield from _utils.iter_tseries_runs(
                 self._timeseries_dir,
+                task=self.TASK,
                 subjects=self.subjects,
                 timeseries=self.timeseries,
+                space=self.space,
             )
 
     # -----------------------------------------------------------------
     # Event loading
     # -----------------------------------------------------------------
 
-    def _load_raw(self, timeline: dict[str, tp.Any]) -> nib.Nifti1Image:
-        """Load a preprocessed BOLD run as a :class:`nibabel.Nifti1Image`.
+    def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
+        """Load a preprocessed BOLD run as a :class:`nibabel.Nifti1Image`, 
+        returns its full path and its number of volumes (duration in TRs).
 
         Parameters
         ----------
@@ -476,30 +480,36 @@ class CNeuroModStudy(_study.Study):
 
         Returns
         -------
+        str
+            The path to the fMRIPrep preprocessed BOLD file.
         nibabel.Nifti1Image
-            The preprocessed BOLD image.
+            The number of volumes (TRs) in the preprocessed BOLD image.
 
         Raises
         ------
         FileNotFoundError
             If the BOLD file does not exist (DataLad content not fetched).
         """
-        sub = timeline["subject"]
-        ses = timeline.get("session")
-        run = timeline.get("run")
-        task = timeline.get("task", self.TASK)
-
-        bp = _utils.bold_path(
-            self._fmriprep_dir, sub, task,
-            session=ses, run=run,
-            space=self.space,
+        sub = f"sub-{timeline['subject']}"
+        ses = f"ses-{timeline['session']}"
+        run = "" if timeline.get("run") is None else f"_run-{timeline.get('run')}"
+        task = f"task-{timeline['task']}"
+        
+        bp = Path(
+            f"{self._fmriprep_dir}/{sub}/{ses}/func/"
+            f"{sub}_{ses}_{task}{run}_space-{self.space}"
+            "_desc-preproc_bold.nii.gz"
         )
         if not bp.exists():
             raise FileNotFoundError(
                 f"BOLD file not found: {bp}\n"
                 "Run study.download() or datalad get to fetch the content."
             )
-        return nib.load(str(bp))  # type: ignore[return-value]
+        return bp, nib.load(str(bp)).shape[-1]
+
+    def _get_tseries_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
+        pass
+        # TODO: define function
 
     def _load_stimulus_events(
         self, timeline: dict[str, tp.Any]
@@ -560,49 +570,46 @@ class CNeuroModStudy(_study.Study):
 
         Builds two kinds of rows:
 
-        * **Fmri** — one row pointing to the preprocessed BOLD file via a
+        * **BOLD** — one row pointing to the preprocessed BOLD file via a
           :class:`neuralset.events.study.SpecialLoader`.
-        * **Stimulus / trial events** — rows from the BIDS events TSV (if
-          the raw BIDS repo is present).
+        * **Stimulus / trial events** — rows from the BIDS events TSV if
+          the file exists. Some tasks (friends, movie10) / sub-tasks (some language
+          localizers) have no events files.
 
         Parameters
         ----------
         timeline:
-            Timeline dictionary with at least ``subject``, ``task`` keys.
+            Timeline dictionary with at least ``subject``, ``session``,  
+            ``task`` and/or ``run`` keys.
 
         Returns
         -------
         pd.DataFrame
             Combined events table in neuralset format.
         """
-        sub = timeline["subject"]
-        ses = timeline.get("session")
-        run = timeline.get("run")
-        task = timeline.get("task", self.TASK)
-
         # --- fMRI event row ---
-        bold_img = self._load_raw(timeline)
-        n_volumes: int = bold_img.shape[-1]
-        # Derive TR from the NIfTI header pixdim[4]
-        tr_s: float = float(bold_img.header.get_zooms()[3])  # type: ignore[index]
-        if tr_s <= 0:
-            logger.warning("TR could not be read from NIfTI header; defaulting to 1.49 s")
-            tr_s = 1.49
-
-        fmri_row: dict[str, tp.Any] = {
-            "type": "Fmri",
-            "start": 0.0,
-            "duration": float(n_volumes) * tr_s,
-            "frequency": 1.0 / tr_s,
-            "filepath": str(
-                _utils.bold_path(
-                    self._fmriprep_dir, sub, task,
-                    session=ses, run=run,
-                    space=self.space,
-                )
-            ),
-            "space": self.space,
-        }
+        tr_s = _utils.DEFAULT_TR
+        if self.timeseries is None:
+            bold_path, n_TRs = self._get_scan_dur(timeline)
+            fmri_row: dict[str, tp.Any] = {
+                "type": "Fmri",
+                "start": 0.0,
+                "duration": float(n_TRs) * tr_s,
+                "frequency": 1.0 / tr_s,
+                "filepath": bold_path,
+                "space": self.space,
+            }
+        else:
+            tseries_path, n_TRs = self._get_tseries_dur(timeline)
+            fmri_row: dict[str, tp.Any] = {
+                "type": "timeseries",  #  TODO: create event type, see doc...
+                "start": 0.0,
+                "duration": float(n_TRs) * tr_s,
+                "frequency": 1.0 / tr_s,
+                "filepath": tseries_path,
+                "timeseries": self.timeseries,
+                "space": self.space,
+            }
 
         # --- Stimulus / behavioural events ---
         stim_events = self._load_stimulus_events(timeline)

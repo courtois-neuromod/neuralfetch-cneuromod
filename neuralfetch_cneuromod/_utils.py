@@ -18,6 +18,7 @@ import logging
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
+import h5py
 import numpy as np
 import pandas as pd
 from datalad import api as dl
@@ -30,6 +31,8 @@ logger = logging.getLogger(__name__)
 
 #: Default MNI152 template identifier used by fMRIPrep.
 DEFAULT_SPACE = "MNI152NLin2009cAsym"
+#: Default fMRI TR in seconds.
+DEFAULT_TR = 1.49
 #: Default resolution string used by fMRIPrep.
 DEFAULT_RESOLUTION: str | None = "2"
 #: Timeseries file name descriptor 
@@ -40,67 +43,6 @@ TSERIES_DESCRIPT = {
     "voxel_mni": "desc-voxelwise",
     "voxel_native": "desc-voxelwise",
 }
-
-
-
-def bold_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-    space: str = DEFAULT_SPACE,
-    suffix: str = "bold",
-    extension: str = ".nii.gz",
-) -> Path:
-    """Return the expected path to a fMRIPrep preprocessed BOLD file.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset (i.e. the directory that
-        contains ``sub-*`` folders).
-    subject:
-        Subject label *without* the ``sub-`` prefix (e.g. ``"01"``).
-    task:
-        BIDS task label (e.g. ``"friends"``).
-    session:
-        BIDS session label without the ``ses-`` prefix.  When ``None`` the
-        path is built without a session level.
-    run:
-        Run index (1-based integer) or string label.  When ``None`` the
-        ``run-`` entity is omitted from the filename.
-    space:
-        fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``).
-    suffix:
-        BIDS suffix (default ``"bold"``).
-    extension:
-        File extension (default ``".nii.gz"``).
-
-    Returns
-    -------
-    Path
-        Full path to the expected BOLD NIfTI file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    if space is not None:
-        entities.append(f"space-{space}")
-    entities.append(f"desc-preproc_{suffix}")
-
-    fname = "_".join(entities) + extension
-    return sub_dir / fname
 
 
 def confounds_path(
@@ -497,7 +439,8 @@ def iter_bids_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``session`` (str), ``task`` (str), ``run`` (str | None).
+        Keys: ``subject`` (str), ``file_path`` (None), ``session`` (str), ``task`` (str),
+        ``run`` (str | None).
     """
     available_subjects = get_subjects(fmriprep_dir)
     if subjects is not None:
@@ -511,49 +454,58 @@ def iter_bids_runs(
                 session=ses, space=space,
             )
             for task, run in runs:
-                yield dict(subject=sub, session=ses, task=task, run=run)
+                yield dict(subject=sub, file_path=None, session=ses, task=task, run=run)
 
 
 def iter_tseries_runs(
     timeseries_dir: Path,
     *,
+    task: str,
     subjects: list[str] | None = None,
     timeseries: str = DEFAULT_TIMESERIES,
+    space: str = DEFAULT_SPACE,
 ) -> Iterator[dict[str, Any]]:
-    """Iterate over all available (subject, session, run) triples in *fmriprep_dir*.
+    """Iterate over all available (subject, session, run) triples in nested 
+    .h5 timeseries files for specified timeseries in *timeseries_dir*.
 
-    Only triples for which a preprocessed BOLD file actually exists on disk
-    are yielded.  This is the primary iterator used by ``iter_timelines()``
-    in all study classes.
+    Only triples for which a preprocessed timeseries actually exists
+    are yielded.  This is the alternative iterator used by ``iter_timelines()``
+    to compile timeseries in all study classes for which they have been extracted.
 
     Parameters
     ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset.
+    timeseries_dir:
+        Root of the timeseries derivatives dataset.
+    task: 
+        cneuromod dataset name (e.g., movie10)
     subjects:
         Restrict iteration to these subject labels (without ``sub-`` prefix).
         Defaults to all subjects found in *fmriprep_dir*.
+    timeseries:
+        name of the pre-extracted, masked, denoised and normalized timeseries
     space:
-        fMRIPrep output space template.
+        fMRIPrep output space template of BOLD data processed into timeseries.
 
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``session`` (str), ``run`` (str).
+        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str),  ``task`` (None), ``run`` (str).
     """
-    available_subjects = get_subjects(fmriprep_dir)
+    available_subjects = get_subjects(f"{timeseries_dir}/timeseries/{timeseries}")
     if subjects is not None:
         available_subjects = [s for s in available_subjects if s in subjects]
 
     for sub in available_subjects:
-        sessions = get_sessions(fmriprep_dir, sub)
+        h5_path = Path(
+            f"{timeseries_dir}/timeseries/{timeseries}/sub-{sub}/sub-{sub}_task-{task}"
+            f"_space-{space}_{TSERIES_DESCRIPT[timeseries]}_timeseries.h5",
+        )
+        sub_tseries = h5py.File(h5_path, "r")
+        sessions = list(sub_tseries.keys())
         for ses in sessions:
-            runs = get_bold_runs(
-                fmriprep_dir, sub, 
-                session=ses, space=space,
-            )
-            for task, run in runs:
-                yield dict(subject=sub, session=ses, task=task, run=run)
+            runs = list(sub_tseries[ses].keys())
+            for run in runs:
+                yield dict(subject=sub, file_path=h5_path, session=ses, task=None, run=run)
 
 
 def load_bold_masked(
