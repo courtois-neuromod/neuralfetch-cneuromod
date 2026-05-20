@@ -19,6 +19,7 @@ from typing import Any, Iterator, Sequence
 
 import numpy as np
 import pandas as pd
+from datalad import api as dl
 
 logger = logging.getLogger(__name__)
 
@@ -363,6 +364,31 @@ def get_bold_runs(
         runs.append(run)
 
     return runs if runs else []
+
+
+# ---------------------------------------------------------------------------
+# Datalad get helper
+# ---------------------------------------------------------------------------
+
+def datalad_get_list(
+    patterns: list,
+    dset_path: str
+) -> None:
+    """Pulls files selectively from a dataset submodule by passing BIDS glob 
+    patterns to ``datalad get``.
+
+    Parameters
+    ----------
+    patterns:
+        List of file patterns to download from a submodule
+    dset_path:
+        Path to the submodule that contains the files (the 'dataset')
+
+    """
+    for pattern in patterns:
+        dl_files = sorted(glob.glob(pattern))
+        if len(dl_files):
+            dl.get(path=dl_files, dataset=dset_path, jobs="auto")
 
 
 # ---------------------------------------------------------------------------

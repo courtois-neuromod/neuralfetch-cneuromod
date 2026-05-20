@@ -347,19 +347,6 @@ class CNeuroModStudy(_study.Study):
             ])
         return patterns
 
-patterns.extend([
-    # Preprocessed BOLD in the target space
-    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
-    f"task-*_{space}_desc-preproc_bold.nii.gz",
-    # Confound regressors
-    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
-    f"task-*_desc-confounds_timeseries.tsv",
-    # Brain mask in the target space
-    f"{study.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
-    f"task-*_{space}_desc-brain_mask.nii.gz",
-])
-
-
     def _timeseries_download_patterns(self) -> list[str]:
         """Build timeseries derivative glob patterns for the configured space.
 
@@ -413,11 +400,6 @@ patterns.extend([
         The patterns are built by :meth:`_bids_download_patterns`,
         :meth:`_fmriprep_download_patterns` and :meth:`_timeseries_download_patterns` 
         from the current field values.
-
-        Raises
-        ------
-        RuntimeError
-            If DataLad / git-annex is not installed or operations fail.
         """
         cls_name = self.__class__.__name__
 
@@ -425,6 +407,7 @@ patterns.extend([
         logger.info(
             "[%s] BIDS patterns: %s", cls_name, bids_patterns
         )
+        _utils.datalad_get_list(bids_patterns, dataset=f"{self.path}/bids")
         for bids_pattern in bids_patterns:
             dl.get(path=sorted(glob.glob(bids_pattern)), dataset=f"{self.path}/bids", jobs="auto")
 
@@ -434,6 +417,8 @@ patterns.extend([
                 "[%s] fMRIPrep patterns (space=%s): %s",
                 cls_name, self.space, fmriprep_patterns,
             )
+            _utils.datalad_get_list(fmriprep_patterns, f"{self.path}/fmriprep")
+
             for fmriprep_pattern in fmriprep_patterns:
                 dl.get(path=sorted(glob.glob(fmriprep_pattern)), dataset=f"{self.path}/fmriprep", jobs="auto")
 
@@ -443,6 +428,7 @@ patterns.extend([
                 "[%s] timeseries patterns (timeseries=%s): %s",
                 cls_name, self.timeseries, fmriprep_patterns,
             )
+            _utils.datalad_get_list(timeseries_patterns, f"{self.path}/timeseries")
             for timeseries_pattern in timeseries_patterns:
                 dl.get(path=sorted(glob.glob(timeseries_pattern)), dataset=f"{self.path}/timeseries", jobs="auto")
 
