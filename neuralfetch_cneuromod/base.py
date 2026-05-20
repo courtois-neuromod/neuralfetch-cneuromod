@@ -441,7 +441,7 @@ class CNeuroModStudy(_study.Study):
         Yields
         ------
         dict
-            Keys: ``subject`` (str), ``session`` (str), ``file_path`` (str | None), 
+            Keys: ``subject`` (str), ``session`` (str), ``file_path`` (str), 
             ``task`` (str | None), ``run`` (str | None).
 
         Raises
@@ -468,7 +468,7 @@ class CNeuroModStudy(_study.Study):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
+    def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[Path, int]:
         """Load a preprocessed BOLD run as a :class:`nibabel.Nifti1Image`, 
         returns its full path and its number of volumes (duration in TRs).
 
@@ -480,7 +480,7 @@ class CNeuroModStudy(_study.Study):
 
         Returns
         -------
-        str
+        Path
             The path to the fMRIPrep preprocessed BOLD file.
         nibabel.Nifti1Image
             The number of volumes (TRs) in the preprocessed BOLD image.
@@ -490,16 +490,7 @@ class CNeuroModStudy(_study.Study):
         FileNotFoundError
             If the BOLD file does not exist (DataLad content not fetched).
         """
-        sub = f"sub-{timeline['subject']}"
-        ses = f"ses-{timeline['session']}"
-        run = "" if timeline.get("run") is None else f"_run-{timeline.get('run')}"
-        task = f"task-{timeline['task']}"
-        
-        bp = Path(
-            f"{self._fmriprep_dir}/{sub}/{ses}/func/"
-            f"{sub}_{ses}_{task}{run}_space-{self.space}"
-            "_desc-preproc_bold.nii.gz"
-        )
+        bp = timeline['file_path']
         if not bp.exists():
             raise FileNotFoundError(
                 f"BOLD file not found: {bp}\n"

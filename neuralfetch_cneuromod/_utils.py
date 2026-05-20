@@ -268,9 +268,10 @@ def get_bold_runs(
 
     Returns
     -------
-    list[tuple]
-        (Task run label (without ``task-`` prefix), run number (without ``run-`` prefix) 
-        or ``None`` for runs without run numbers.
+    list[tuple[str, Path, str]]
+        (Task run label (without ``task-`` prefix), 
+        run number (without ``run-`` prefix) or ``None`` if no run number,
+        full run path).
     """
     sub_dir = fmriprep_dir / f"sub-{subject}"
     func_dir = sub_dir / f"ses-{session}" / "func"
@@ -299,7 +300,7 @@ def get_bold_runs(
             elif entity.startswith("run-"):
                 run = entity[4:]
                 break
-        runs.append((task, run))
+        runs.append((task, run, f))  # TODO: double-check if f is full path or relative path
 
     return runs if runs else []
 
@@ -439,7 +440,7 @@ def iter_bids_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``file_path`` (None), ``session`` (str), ``task`` (str),
+        Keys: ``subject`` (str), ``file_path`` (Path), ``session`` (str), ``task`` (str),
         ``run`` (str | None).
     """
     available_subjects = get_subjects(fmriprep_dir)
@@ -453,8 +454,8 @@ def iter_bids_runs(
                 fmriprep_dir, sub, 
                 session=ses, space=space,
             )
-            for task, run in runs:
-                yield dict(subject=sub, file_path=None, session=ses, task=task, run=run)
+            for task, run, run_path in runs:
+                yield dict(subject=sub, file_path=run_path, session=ses, task=task, run=run)
 
 
 def iter_tseries_runs(
@@ -489,7 +490,7 @@ def iter_tseries_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str),  ``task`` (None), ``run`` (str).
+        Keys: ``subject`` (str), ``file_path`` (Path), ``session`` (str),  ``task`` (None), ``run`` (str).
     """
     available_subjects = get_subjects(f"{timeseries_dir}/timeseries/{timeseries}")
     if subjects is not None:
