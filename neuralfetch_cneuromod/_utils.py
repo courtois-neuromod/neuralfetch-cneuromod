@@ -13,6 +13,7 @@ or git-annex directly.
 
 from __future__ import annotations
 
+import glob
 import logging
 from pathlib import Path
 from typing import Any, Iterator, Sequence
