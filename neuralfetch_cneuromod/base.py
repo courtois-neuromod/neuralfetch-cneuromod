@@ -37,6 +37,7 @@ from datalad import api as dl
 from neuralset.events import study as _study
 
 from . import _utils
+from _utils import _set_dir_permissions
 
 
 logger = logging.getLogger(__name__)
@@ -373,7 +374,8 @@ class CNeuroModStudy(_study.Study):
         for sub in self._subject_globs():
             patterns.extend([
                 # BOLD timeseries in the target space
-                f"timeseries/{tseries}/{sub}/{sub}_task-{task}_{space}_{ts_desc}_timeseries.h5",
+                f"{self.path}/timeseries/timeseries/{tseries}/{sub}/{sub}_task-"
+                f"{task}_{space}_{ts_desc}_timeseries.h5",
             ])
         return patterns
 

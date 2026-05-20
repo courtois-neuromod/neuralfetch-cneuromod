@@ -368,7 +368,7 @@ def get_bold_runs(
 
 
 # ---------------------------------------------------------------------------
-# Datalad get helper
+# Datalad get helpers
 # ---------------------------------------------------------------------------
 
 def datalad_get_list(
@@ -391,6 +391,12 @@ def datalad_get_list(
         if len(dl_files):
             dl.get(path=dl_files, dataset=dset_path, jobs="auto")
 
+
+def _set_dir_permissions(path: Path) -> None:
+    """Overwrites Study.download() helper function that sets 777 permissions 
+    recursively on a directory.
+    """
+    pass
 
 # ---------------------------------------------------------------------------
 # Data loading helpers
