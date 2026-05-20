@@ -37,8 +37,8 @@ from datalad import api as dl
 from neuralset.events import study as _study
 
 from . import _utils
-from _utils import _set_dir_permissions
 
+_study._set_dir_permissions = _utils._set_dir_permissions
 
 logger = logging.getLogger(__name__)
 
@@ -403,6 +403,8 @@ class CNeuroModStudy(_study.Study):
         :meth:`_fmriprep_download_patterns` and :meth:`_timeseries_download_patterns` 
         from the current field values.
         """
+        # TODO: fix inheritence problem with class download() function, which crashes
+        # when attempting to re-assign 777 permissions to all the data repo files recursively
         cls_name = self.__class__.__name__
 
         bids_patterns = self._bids_download_patterns()
