@@ -421,7 +421,7 @@ class CNeuroModStudy(_study.Study):
             timeseries_patterns = self._timeseries_download_patterns()
             logger.info(
                 "[%s] timeseries patterns (timeseries=%s): %s",
-                cls_name, self.timeseries, fmriprep_patterns,
+                cls_name, self.timeseries, timeseries_patterns,
             )
             _utils.datalad_get_list(timeseries_patterns, f"{self.path}/timeseries")
 
