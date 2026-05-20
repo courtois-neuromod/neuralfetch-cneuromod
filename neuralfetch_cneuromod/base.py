@@ -32,12 +32,9 @@ import pandas as pd
 import pydantic
 
 from datalad import api as dl
-#from neuralfetch.download import Datalad
-
 from neuralset.events import study as _study
 
 from . import _utils
-
 _study._set_dir_permissions = _utils._set_dir_permissions
 
 logger = logging.getLogger(__name__)
@@ -442,23 +439,27 @@ class CNeuroModStudy(_study.Study):
         Yields
         ------
         dict
-            Keys: ``subject`` (str), ``session`` (str | None),
-            ``run`` (str | None), ``task`` (str).
+            Keys: ``subject`` (str), ``session`` (str),
+            ``task`` (str), ``run`` (str | None).
 
         Raises
         ------
         FileNotFoundError
             If :attr:`fmriprep_dir` does not exist.
         """
-        # TODO: add option to iterate over timeseries
-        #self._check_dirs()
-        yield from _utils.iter_bids_runs(
-            self._fmriprep_dir,
-            self._bids_dir if self._bids_dir.exists() else None,
-            self.TASK,
-            subjects=self.subjects,
-            space=self.space,
-        )
+        if self.timeseries is None:
+            yield from _utils.iter_bids_runs(
+                self._fmriprep_dir,
+                subjects=self.subjects,
+                space=self.space,
+            )
+        else:
+            # TODO: implement option to iterate over timeseries
+            yield from _utils.iter_tseries_runs(
+                self._timeseries_dir,
+                subjects=self.subjects,
+                timeseries=self.timeseries,
+            )
 
     # -----------------------------------------------------------------
     # Event loading

@@ -33,6 +33,7 @@ DEFAULT_SPACE = "MNI152NLin2009cAsym"
 #: Default resolution string used by fMRIPrep.
 DEFAULT_RESOLUTION: str | None = "2"
 #: Timeseries file name descriptor 
+DEFAULT_TIMESERIES = "cneuromod2026"
 TSERIES_DESCRIPT = {
     "cneuromod2026": "atlas-cneuromod26_desc-1134Parcels",
     "schaefer1000": "atlas-Schaefer18_desc-1000Parcels7Networks",
@@ -287,8 +288,7 @@ def get_sessions(directory: Path, subject: str) -> list[str]:
     Returns
     -------
     list[str]
-        Sorted session labels (e.g. ``["001", "002"]``).  Returns ``[]``
-        when no ``ses-*`` subdirectories exist (session-less datasets).
+        Sorted session labels (e.g. ``["001", "002"]``).
     """
     sub_dir = directory / f"sub-{subject}"
     if not sub_dir.exists():
@@ -304,7 +304,6 @@ def get_sessions(directory: Path, subject: str) -> list[str]:
 def get_bold_runs(
     fmriprep_dir: Path,
     subject: str,
-    task: str,
     *,
     session: str | None = None,
     space: str = DEFAULT_SPACE,
@@ -320,8 +319,6 @@ def get_bold_runs(
         Root of the fMRIPrep derivatives dataset.
     subject:
         Subject label without ``sub-`` prefix.
-    task:
-        BIDS task label.
     session:
         BIDS session label without ``ses-`` prefix.
     space:
@@ -329,40 +326,38 @@ def get_bold_runs(
 
     Returns
     -------
-    list[str | None]
-        Run labels (without ``run-`` prefix) or ``[None]`` for a single
-        unlabelled run.
+    list[tuple]
+        (Task run label (without ``task-`` prefix), run number (without ``run-`` prefix) 
+        or ``None`` for runs without run numbers.
     """
     sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        func_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        func_dir = sub_dir / "func"
+    func_dir = sub_dir / f"ses-{session}" / "func"
 
     if not func_dir.exists():
         return []
 
     pattern_parts = [
         f"sub-{subject}",
-        f"_ses-{session}" if session else "",
-        f"_task-{task}*",
+        f"_ses-{session}_task-*",
+        f"_space-{space}",
+        "_desc-preproc_bold.nii.gz",
     ]
-    if space is not None:
-        pattern_parts.append(f"_space-{space}")
-    pattern_parts.append("_desc-preproc_bold.nii.gz")
     
     pattern = "".join(pattern_parts)
     bold_files = sorted(func_dir.glob(pattern))
-    runs: list[str | None] = []
+    runs = []
     for f in bold_files:
-        # Extract run entity from filename
+        # Extract task-run entity from filename
         stem = f.name
         run: str | None = None
+        task: str | None = None        
         for entity in stem.split("_"):
-            if entity.startswith("run-"):
+            if entity.startswith("task-"):
+                task = entity[5:]
+            elif entity.startswith("run-"):
                 run = entity[4:]
                 break
-        runs.append(run)
+        runs.append((task, run))
 
     return runs if runs else []
 
@@ -393,8 +388,11 @@ def datalad_get_list(
 
 
 def _set_dir_permissions(path: Path) -> None:
-    """Overwrites Study.download() helper function that sets 777 permissions 
-    recursively on a directory.
+    """Overwrites study._set_dir_permissions() helper function that sets 
+    777 permissions recursively on a dataset repository. 
+    
+    This reset is overly permissive, and it is incompatible with the selective 
+    file download implemented with datalad get.
     """
     pass
 
@@ -476,8 +474,6 @@ def load_confounds_tsv(
 
 def iter_bids_runs(
     fmriprep_dir: Path,
-    bids_dir: Path | None,
-    task: str,
     *,
     subjects: list[str] | None = None,
     space: str = DEFAULT_SPACE,
@@ -492,12 +488,6 @@ def iter_bids_runs(
     ----------
     fmriprep_dir:
         Root of the fMRIPrep derivatives dataset.
-    bids_dir:
-        Root of the raw BIDS dataset.  Used for session discovery when the
-        fmriprep layout does not include explicit ``ses-*`` directories.
-        Pass ``None`` to skip cross-referencing with the raw BIDS layout.
-    task:
-        BIDS task label.
     subjects:
         Restrict iteration to these subject labels (without ``sub-`` prefix).
         Defaults to all subjects found in *fmriprep_dir*.
@@ -507,8 +497,7 @@ def iter_bids_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``session`` (str | None), ``run`` (str | None),
-        ``task`` (str).
+        Keys: ``subject`` (str), ``session`` (str), ``task`` (str), ``run`` (str | None).
     """
     available_subjects = get_subjects(fmriprep_dir)
     if subjects is not None:
@@ -518,11 +507,53 @@ def iter_bids_runs(
         sessions = get_sessions(fmriprep_dir, sub)
         for ses in sessions:
             runs = get_bold_runs(
-                fmriprep_dir, sub, task, 
+                fmriprep_dir, sub, 
                 session=ses, space=space,
             )
-            for run in runs:
-                yield dict(subject=sub, session=ses, run=run, task=task)
+            for task, run in runs:
+                yield dict(subject=sub, session=ses, task=task, run=run)
+
+
+def iter_tseries_runs(
+    timeseries_dir: Path,
+    *,
+    subjects: list[str] | None = None,
+    timeseries: str = DEFAULT_TIMESERIES,
+) -> Iterator[dict[str, Any]]:
+    """Iterate over all available (subject, session, run) triples in *fmriprep_dir*.
+
+    Only triples for which a preprocessed BOLD file actually exists on disk
+    are yielded.  This is the primary iterator used by ``iter_timelines()``
+    in all study classes.
+
+    Parameters
+    ----------
+    fmriprep_dir:
+        Root of the fMRIPrep derivatives dataset.
+    subjects:
+        Restrict iteration to these subject labels (without ``sub-`` prefix).
+        Defaults to all subjects found in *fmriprep_dir*.
+    space:
+        fMRIPrep output space template.
+
+    Yields
+    ------
+    dict
+        Keys: ``subject`` (str), ``session`` (str), ``run`` (str).
+    """
+    available_subjects = get_subjects(fmriprep_dir)
+    if subjects is not None:
+        available_subjects = [s for s in available_subjects if s in subjects]
+
+    for sub in available_subjects:
+        sessions = get_sessions(fmriprep_dir, sub)
+        for ses in sessions:
+            runs = get_bold_runs(
+                fmriprep_dir, sub, 
+                session=ses, space=space,
+            )
+            for task, run in runs:
+                yield dict(subject=sub, session=ses, task=task, run=run)
 
 
 def load_bold_masked(
