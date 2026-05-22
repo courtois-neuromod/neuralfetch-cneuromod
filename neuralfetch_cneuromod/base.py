@@ -32,6 +32,7 @@ import pandas as pd
 import pydantic
 
 from datalad import api as dl
+from neuralset.events import etypes
 from neuralset.events import study as _study
 
 from . import _utils
@@ -47,6 +48,46 @@ _CNEUROMOD_ALL = "https://github.com/courtois-neuromod/cneuromod.all.git"
 
 # GitHub base URL for CNeuroMod datalad repositories
 _CNEUROMOD_GH = "https://github.com/courtois-neuromod/{repo}.git"
+
+
+class Timeseries(etypes.BaseSplittableEvent):
+    """Pre-processed, masked, detrended and normalized functional MRI (fMRI) 
+    recording event.
+
+    Requires :code:`h5py` to be installed.
+
+    Supports chunking via :meth:`_split` inherited from
+    :class:`BaseSplittableEvent`; :meth:`read` crops to
+    ``[offset, offset+duration]`` so chunks load only their own slice.
+
+    Parameters
+    ----------
+    subject : str
+        Subject identifier (required).
+    timeseries : str
+        Coordinate space, e.g. ``"MNI152NLin2009cAsym"``, ``"T1w"``,
+        ``"fsaverage"``, ``"custom"``.
+    frequency : float
+        Sampling frequency in Hz (required).
+
+    Example (TODO: adjust to Timeseries)
+    --------
+    .. code-block:: python
+
+        video = Video(start=0, timeline="video_exp", filepath="video.mp4",
+                     offset=5.0, duration=10.0)
+        clip = video.read()  # Returns 10-second clip starting at 5s
+    """
+    subject: StrCast
+    session: str | None = None
+    run: str | None = None
+    timeseries: str = _utils.DEFAULT_TIMESERIES
+    space: str = _utils.DEFAULT_SPACE
+
+    def _read(self) -> tp.Any:
+        """"""
+        pass
+        # TODO: define
 
 
 class CNeuroModStudy(_study.Study):
@@ -132,7 +173,6 @@ class CNeuroModStudy(_study.Study):
     # Pydantic fields
     # -----------------------------------------------------------------
 
-    # TODO: adjust/expand to handle different types of timeseries
     #: fMRIPrep output space template.
     space: str | None = _utils.DEFAULT_SPACE
     #: Define to model pre-extracted timeseries rather than fMRIprep output
@@ -400,8 +440,6 @@ class CNeuroModStudy(_study.Study):
         :meth:`_fmriprep_download_patterns` and :meth:`_timeseries_download_patterns` 
         from the current field values.
         """
-        # TODO: fix inheritence problem with class download() function, which crashes
-        # when attempting to re-assign 777 permissions to all the data repo files recursively
         cls_name = self.__class__.__name__
 
         bids_patterns = self._bids_download_patterns()
@@ -470,7 +508,7 @@ class CNeuroModStudy(_study.Study):
 
     def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[Path, int]:
         """Load a preprocessed BOLD run as a :class:`nibabel.Nifti1Image`, 
-        returns its full path and its number of volumes (duration in TRs).
+        return its full path and its number of volumes (duration in TRs).
 
         Parameters
         ----------
@@ -498,9 +536,42 @@ class CNeuroModStudy(_study.Study):
             )
         return bp, nib.load(str(bp)).shape[-1]
 
+
     def _get_tseries_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
-        pass
-        # TODO: define function
+        """Open an hdf5 file of nested pre-extracted timeseries (one file per subject), 
+        return its full path and the number of time points (duration in TRs) for a 
+        given run ('timeline').
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        Path
+            The path to the subject's .hdf5 file that contains the run's timeseries.
+        nibabel.Nifti1Image
+            The number of time points (TRs) in the run's timeseries.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the HDF5 file does not exist (DataLad content not fetched).
+        """
+        tp = timeline['file_path']
+        if not tp.exists():
+            raise FileNotFoundError(
+                f"HDF5 file not found: {tp}\n"
+                "Run study.download() or datalad get to fetch the content."
+            )
+
+        with h5py.File(tp, "r") as f:
+            n_TRs = np.array(f[f"{timeline['session']}"][f"{timeline['run']}"]).shape[0]
+
+        return tp, n_TRs
+
 
     def _load_stimulus_events(
         self, timeline: dict[str, tp.Any]
@@ -564,7 +635,7 @@ class CNeuroModStudy(_study.Study):
         * **BOLD** — one row pointing to the preprocessed BOLD file via a
           :class:`neuralset.events.study.SpecialLoader`.
         * **Stimulus / trial events** — rows from the BIDS events TSV if
-          the file exists. Some tasks (friends, movie10) / sub-tasks (some language
+          the file exists. Some tasks (friends, movie10) or sub-tasks (some language
           localizers) have no events files.
 
         Parameters
@@ -578,6 +649,9 @@ class CNeuroModStudy(_study.Study):
         pd.DataFrame
             Combined events table in neuralset format.
         """
+        timeline_name = os.basename(
+            timeline['file_path']).split("_space")[0]
+
         # --- fMRI event row ---
         tr_s = _utils.DEFAULT_TR
         if self.timeseries is None:
@@ -588,18 +662,27 @@ class CNeuroModStudy(_study.Study):
                 "duration": float(n_TRs) * tr_s,
                 "frequency": 1.0 / tr_s,
                 "filepath": bold_path,
+                "mask_filepath": bold_path.replace("_bold.", "_mask."),
+                "subject": timeline['subject'],
+                "session": f"ses-{timeline['session']}",    
                 "space": self.space,
+                "preproc": "fmriprep",
+                "timeline": timeline_name,
             }
         else:
             tseries_path, n_TRs = self._get_tseries_dur(timeline)
             fmri_row: dict[str, tp.Any] = {
-                "type": "timeseries",  #  TODO: create event type, see doc...
+                "type": "Timeseries",
                 "start": 0.0,
                 "duration": float(n_TRs) * tr_s,
                 "frequency": 1.0 / tr_s,
                 "filepath": tseries_path,
+                "subject": timeline['subject'],
+                "session": timeline['session'],
+                "run": timeline['run'],                
                 "timeseries": self.timeseries,
                 "space": self.space,
+                "timeline": timeline_name,
             }
 
         # --- Stimulus / behavioural events ---

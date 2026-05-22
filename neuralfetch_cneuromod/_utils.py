@@ -300,7 +300,7 @@ def get_bold_runs(
             elif entity.startswith("run-"):
                 run = entity[4:]
                 break
-        runs.append((task, run, f))  # TODO: double-check if f is full path or relative path
+        runs.append((task, run, f))
 
     return runs if runs else []
 
