@@ -4,18 +4,19 @@
 centralises:
 
 * Directory layout resolution for the submodule structure
-  (e.g., ``{study}/bids`` and ``{study}/fmriprep``).
-* DataLad download logic via :class:`neuralfetch.download.Datalad` (clone +
-  selective ``datalad get`` with success-file idempotency).
+  (e.g., ``{study}/bids`` and ``{study}/fmriprep`` or ``{study}/timeseries``).
+* DataLad download logic via selective ``datalad get`` with success-file idempotency.
 * BOLD loading via :func:`~neuralfetch_cneuromod._utils.load_bold_masked`.
 * Construction of a ``neuralset``-compatible events :class:`pandas.DataFrame`
   that exposes ``Fmri``, ``Stimulus``, and ``Events`` event types.
 
 Concrete study classes only need to:
 
-1. Set the :attr:`TASK` class variable.
-2. Optionally override :meth:`_load_stimulus_events` to attach stimulus
-   information from the raw BIDS dataset.
+1. Set the :attr:`TASK` class variable and class-level variables.
+2. Define :meth:`_extract_stimulus_event` to generate stimulus events from 
+   `events.tsv` files in the raw BIDS dataset. Override 
+   :meth:`_load_stimulus_events` to attach stimulus
+   information at the whole-run level.
 3. Optionally override :meth:`iter_timelines` when the default subject /
    session / run discovery logic is insufficient.
 """
@@ -135,7 +136,8 @@ class CNeuroModStudy(_study.Study):
     """Abstract base class for all Courtois NeuroMod study fetchers.
 
     Subclasses must set the :attr:`TASK` class variable and may override
-    :meth:`_load_stimulus_events` and :meth:`iter_timelines`.
+    :meth:`_load_stimulus_events`, :meth:`_extract_stimulus_event` and 
+    :meth:`iter_timelines`.
 
     Parameters
     ----------
@@ -160,6 +162,8 @@ class CNeuroModStudy(_study.Study):
     subjects:
         Restrict data loading to a subset of subject labels
         (without ``sub-`` prefix).  ``None`` includes all available subjects.
+    datalad_jobs:
+        Parallel DataLad download jobs.
 
     Class Variables
     ---------------
@@ -622,8 +626,8 @@ class CNeuroModStudy(_study.Study):
         Default implementation reads the BIDS ``*_events.tsv`` file when the
         raw BIDS directory exists, and returns an empty DataFrame otherwise.
 
-        Subclasses should override _extract_stimulus_event to attach dataset-specific
-        events and stimulus metadata (e.g. video file paths, image identifiers).
+        Subclasses should override to attach stimulus metadata (e.g. video file
+        paths, image identifiers).
 
         Parameters
         ----------
@@ -718,7 +722,7 @@ class CNeuroModStudy(_study.Study):
         if self.timeseries is None:
             bold_path, n_TRs = self._get_scan_dur(timeline)
             timeline_name = os.basename(
-                bold_path.split("_space")[0].replate("_part-mag", "")
+                bold_path).split("_space")[0].replace("_part-mag", "")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Fmri",
                 "start": 0.0,
