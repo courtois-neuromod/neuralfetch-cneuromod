@@ -45,153 +45,9 @@ TSERIES_DESCRIPT = {
 }
 
 
-def confounds_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-) -> Path:
-    """Return the expected path to a fMRIPrep confounds timeseries TSV.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-
-    Returns
-    -------
-    Path
-        Full path to the expected confounds TSV file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    entities.append("desc-confounds_timeseries")
-
-    fname = "_".join(entities) + ".tsv"
-    return sub_dir / fname
-
-
-def mask_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-    space: str = DEFAULT_SPACE,
-) -> Path:
-    """Return the expected path to a fMRIPrep brain mask NIfTI.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-    space:
-        fMRIPrep output space template.
-
-    Returns
-    -------
-    Path
-        Full path to the expected brain mask NIfTI file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    if space is not None:
-        entities.append(f"space-{space}")
-    entities.append("desc-brain_mask")
-
-    fname = "_".join(entities) + ".nii.gz"
-    return sub_dir / fname
-
-
-def events_path(
-    bids_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-) -> Path:
-    """Return the expected path to a BIDS events TSV file in the raw dataset.
-
-    Parameters
-    ----------
-    bids_dir:
-        Root of the raw BIDS dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-
-    Returns
-    -------
-    Path
-        Full path to the expected BIDS events TSV.
-    """
-    sub_dir = bids_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{int(run):02d}")
-    entities.append("events")
-
-    fname = "_".join(entities) + ".tsv"
-    return sub_dir / fname
-
-
 # ---------------------------------------------------------------------------
 # BIDS entity discovery
 # ---------------------------------------------------------------------------
-
 
 def get_subjects(directory: Path) -> list[str]:
     """Return sorted list of subject labels found under *directory*.
@@ -273,17 +129,14 @@ def get_bold_runs(
         run number (without ``run-`` prefix) or ``None`` if no run number,
         full run path).
     """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    func_dir = sub_dir / f"ses-{session}" / "func"
+    sub_dir = fmriprep_dir / f"sub-{subject}" / f"ses-{session}" / "func"
 
     if not func_dir.exists():
         return []
 
     pattern_parts = [
-        f"sub-{subject}",
-        f"_ses-{session}_task-*",
-        f"_space-{space}",
-        "_desc-preproc_bold.nii.gz",
+        f"sub-{subject}_ses-{session}_task-*",
+        f"_space-{space}_desc-preproc_bold.nii.gz",
     ]
     
     pattern = "".join(pattern_parts)
@@ -342,45 +195,6 @@ def _set_dir_permissions(path: Path) -> None:
 # ---------------------------------------------------------------------------
 # Data loading helpers
 # ---------------------------------------------------------------------------
-
-
-def load_events_tsv(path: Path) -> pd.DataFrame:
-    """Load and validate a BIDS events TSV file.
-
-    BIDS events files must contain at minimum ``onset`` and ``duration``
-    columns.  Additional columns (e.g. ``trial_type``, ``stim_file``) are
-    preserved.
-
-    Parameters
-    ----------
-    path:
-        Path to the ``*_events.tsv`` file.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with at least ``onset`` and ``duration`` float columns.
-
-    Raises
-    ------
-    FileNotFoundError
-        If *path* does not exist.
-    ValueError
-        If required BIDS columns are missing.
-    """
-    if not path.exists():
-        raise FileNotFoundError(f"BIDS events file not found: {path}")
-    df = pd.read_csv(path, sep="\t")
-    required = {"onset", "duration"}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(
-            f"BIDS events file {path} is missing required columns: {missing}"
-        )
-    df["onset"] = pd.to_numeric(df["onset"], errors="coerce")
-    df["duration"] = pd.to_numeric(df["duration"], errors="coerce")
-    return df
-
 
 def load_confounds_tsv(
     path: Path,

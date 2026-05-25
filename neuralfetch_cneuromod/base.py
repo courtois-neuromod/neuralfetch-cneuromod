@@ -26,6 +26,7 @@ import logging
 import typing as tp
 from pathlib import Path
 
+import h5py
 import nibabel as nib
 import numpy as np
 import pandas as pd
@@ -56,19 +57,28 @@ class Timeseries(etypes.BaseSplittableEvent):
 
     Requires :code:`h5py` to be installed.
 
-    Supports chunking via :meth:`_split` inherited from
-    :class:`BaseSplittableEvent`; :meth:`read` crops to
-    ``[offset, offset+duration]`` so chunks load only their own slice.
+    Supports chunking via read() so chunks load only their own slice.
 
     Parameters
     ----------
     subject : str
-        Subject identifier (required).
-    timeseries : str
-        Coordinate space, e.g. ``"MNI152NLin2009cAsym"``, ``"T1w"``,
-        ``"fsaverage"``, ``"custom"``.
+        Subject identifier, e.g. ``"01"`` (required).
+    filepath : Path or str
+        Path to the .HDF5 file containing nested timeseries.     
+    session : str
+        Session identifier, e.g. ``"ses-001"`` (required). First-level key
+        in .HDF5 file structure.
+    run : str
+        Run identifier, e.g. ``"ses-001_task-bourne01_timeseries"`` (required).
+        Second-level key in .HDF5 file structure.
     frequency : float
         Sampling frequency in Hz (required).
+    timeseries : str
+        Timeseries format, e.g. ``"cneuromod2026"``, ``"schaefer1000"``,
+        ``"voxel_mni"``, ``"voxel_native"``.
+    space : str
+        Coordinate space before timeseries extraction,
+        e.g. ``"MNI152NLin2009cAsym"``, ``"T1w"``.
 
     Example (TODO: adjust to Timeseries)
     --------
@@ -84,10 +94,41 @@ class Timeseries(etypes.BaseSplittableEvent):
     timeseries: str = _utils.DEFAULT_TIMESERIES
     space: str = _utils.DEFAULT_SPACE
 
+    def model_post_init(self, log__: tp.Any) -> None:
+        if not self.frequency or pd.isna(self.frequency):
+            raise ValueError(
+                "Frequency must be provided for Timeseries event."
+            )
+        if not self.duration:
+            raise ValueError(
+                "Duration must be provided for Timeseries event."
+            )
+        if not self.session:
+            raise ValueError(
+                "Session must be provided for Timeseries event."
+            )
+        if not self.run:
+            raise ValueError("Run must be provided for Timeseries event.")
+        super().model_post_init(log__)
+
+    def read(self) -> tp.Any:
+        # If need be, crop based on specified offser and duration``.
+        tseries = super().read()
+        sr = Frequency(self.frequency)
+        start_vol = sr.to_ind(self.offset)
+        end_vol = start_vol + sr.to_ind(self.duration)
+        if start_vol == 0 and end_vol >= tseries.shape[0]:
+            return tseries
+        return tseries[start_vol:end_vol, :]  # chunked
+
     def _read(self) -> tp.Any:
-        """"""
-        pass
-        # TODO: define
+        with h5py.File(self.filepath, "r") as f:
+            tseries = np.array(f[self.session][self.run])
+        return tseries
+
+    # TODO: Do I redefine split??? Fmri class does not... probably fine. (implemented in _read?)
+    #def _split():
+        # https://github.com/facebookresearch/neuroai/blob/30303b368ef2bd3c4524193f9a654c3d89f9d9a3/neuralset-repo/neuralset/events/etypes.py#L423
 
 
 class CNeuroModStudy(_study.Study):
@@ -574,21 +615,23 @@ class CNeuroModStudy(_study.Study):
 
 
     def _load_stimulus_events(
-        self, timeline: dict[str, tp.Any]
+        self, timeline: dict[str, tp.Any], timeline_name: str,
     ) -> pd.DataFrame:
         """Load stimulus/behavioural events for *timeline*.
 
         Default implementation reads the BIDS ``*_events.tsv`` file when the
         raw BIDS directory exists, and returns an empty DataFrame otherwise.
 
-        Subclasses should override this method to attach dataset-specific
-        stimulus metadata (e.g. video file paths, image identifiers).
+        Subclasses should override _extract_stimulus_event to attach dataset-specific
+        events and stimulus metadata (e.g. video file paths, image identifiers).
 
         Parameters
         ----------
         timeline:
             Timeline dictionary with keys ``subject``, ``session``, ``run``,
             ``task``.
+        timeline_name:
+            Unique timeline identifier.
 
         Returns
         -------
@@ -599,31 +642,52 @@ class CNeuroModStudy(_study.Study):
         if not self._bids_dir.exists():
             return pd.DataFrame()
 
-        sub = timeline["subject"]
-        ses = timeline.get("session")
-        run = timeline.get("run")
-        task = timeline.get("task", self.TASK)
-
-        ep = _utils.events_path(self._bids_dir, sub, task, session=ses, run=run)
-        if not ep.exists():
-            logger.debug("No events file found: %s", ep)
+        ep_list = sorted(glob.glob(
+            f"{self._bids_dir}/sub-{timeline['subject']}"
+            f"/*{timeline['session']}/{timeline_name}*events.tsv"
+        ))
+        if len(ep_list) != 1:
+            logger.debug("No unique events file found: %s", ep_list[0])
             return pd.DataFrame()
 
-        bids_events = _utils.load_events_tsv(ep)
+        bids_events = pd.read_csv(ep_list[0], sep="\t")
         # Map BIDS columns to neuralset conventions
         rows = []
         for _, row in bids_events.iterrows():
-            event: dict[str, tp.Any] = {
-                "type": str(row.get("trial_type", "Stimulus")),
-                "start": float(row["onset"]),
-                "duration": float(row["duration"]),
-            }
-            # Carry over any additional columns (e.g. stim_file, response_time)
-            for col in bids_events.columns:
-                if col not in ("onset", "duration", "trial_type"):
-                    event[col] = row[col]
-            rows.append(event)
+            event = self._extract_stimulus_event(row)
+            if event:
+                rows.append(event)
         return pd.DataFrame(rows)
+
+
+    @abstractmethod
+    def _extract_stimulus_event(
+        self,
+        row: pd.Series,
+    ) -> dict[str, tp.Any]:
+        """Implement file processing logic in subclasses.
+        
+        The returned ``event`` dict must at least contain ``type``, ``start``,
+        and ``duration``
+
+        e.g.,
+        event: dict[str, tp.Any] = {
+            "type": str(row.get("trial_type", "Stimulus")),
+            "start": float(row["onset"]),
+            "duration": float(row["duration"]),
+        }
+        # Carry over any additional columns (e.g. stim_file, response_time)
+        for idx in row.index:
+            if idx not in ("onset", "duration", "trial_type"):
+                event[idx] = row[idx]
+
+        Returns
+        -------
+        Any
+            The loaded data
+        """
+        return
+
 
     def _load_timeline_events(
         self, timeline: dict[str, tp.Any]
@@ -642,20 +706,19 @@ class CNeuroModStudy(_study.Study):
         ----------
         timeline:
             Timeline dictionary with at least ``subject``, ``session``,  
-            ``task`` and/or ``run`` keys.
+            ``file_path`` , ``task`` and/or ``run`` keys.
 
         Returns
         -------
         pd.DataFrame
             Combined events table in neuralset format.
         """
-        timeline_name = os.basename(
-            timeline['file_path']).split("_space")[0]
-
         # --- fMRI event row ---
         tr_s = _utils.DEFAULT_TR
         if self.timeseries is None:
             bold_path, n_TRs = self._get_scan_dur(timeline)
+            timeline_name = os.basename(
+                bold_path.split("_space")[0].replate("_part-mag", "")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Fmri",
                 "start": 0.0,
@@ -663,6 +726,9 @@ class CNeuroModStudy(_study.Study):
                 "frequency": 1.0 / tr_s,
                 "filepath": bold_path,
                 "mask_filepath": bold_path.replace("_bold.", "_mask."),
+                "confounds_filepath": bold_path.replace(
+                    f"_space-{self.space}_desc-preproc_bold.nii.gz",
+                    "_desc-confounds_timeseries.tsv"),
                 "subject": timeline['subject'],
                 "session": f"ses-{timeline['session']}",    
                 "space": self.space,
@@ -671,6 +737,9 @@ class CNeuroModStudy(_study.Study):
             }
         else:
             tseries_path, n_TRs = self._get_tseries_dur(timeline)
+            timeline_name = (
+                f"sub-{timeline['subject']}_"
+                f"{timeline['run'].split('_timeseries')[0]}")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Timeseries",
                 "start": 0.0,
@@ -686,7 +755,7 @@ class CNeuroModStudy(_study.Study):
             }
 
         # --- Stimulus / behavioural events ---
-        stim_events = self._load_stimulus_events(timeline)
+        stim_events = self._load_stimulus_events(timeline, timeline_name)
 
         all_rows = [pd.DataFrame([fmri_row])]
         if not stim_events.empty:
