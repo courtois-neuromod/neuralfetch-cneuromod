@@ -565,7 +565,7 @@ class CNeuroModStudy(_study.Study):
         -------
         Path
             The path to the fMRIPrep preprocessed BOLD file.
-        nibabel.Nifti1Image
+        int
             The number of volumes (TRs) in the preprocessed BOLD image.
 
         Raises
@@ -597,7 +597,7 @@ class CNeuroModStudy(_study.Study):
         -------
         Path
             The path to the subject's .hdf5 file that contains the run's timeseries.
-        nibabel.Nifti1Image
+        int
             The number of time points (TRs) in the run's timeseries.
 
         Raises
@@ -672,7 +672,7 @@ class CNeuroModStudy(_study.Study):
         """Implement file processing logic in subclasses.
         
         The returned ``event`` dict must at least contain ``type``, ``start``,
-        and ``duration``
+        and ``duration``.
 
         e.g.,
         event: dict[str, tp.Any] = {

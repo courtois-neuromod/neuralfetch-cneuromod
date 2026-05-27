@@ -20,6 +20,7 @@ References
 
 from __future__ import annotations
 
+import json
 import typing as tp
 
 import pandas as pd
@@ -178,7 +179,8 @@ class Movie10(CNeuroModStudy):
         for mvie in MOVIES:
             patterns.extend([
                 # Movie dialogues transcribed with AssemblyAI speech-to-text
-                f"{self.path}/annotations/{mvie}/movie10_{mvie}*_model-AA_transcript.json",
+                f"{self.path}/annotations/transcripts/{mvie}/"
+                f"movie10_{mvie}*_model-AA_transcript.json",
             ])
         return patterns
 
@@ -220,16 +222,85 @@ class Movie10(CNeuroModStudy):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_movie_dur(self, timeline: dict[str, tp.Any]) -> tuple[Path, int]:
-        """"""
-        # TODO: implement get movie freq, duration, file path
-        pass
+    def _get_movie_path(self, timeline: dict[str, tp.Any]) -> Path:
+        """
+        Return the full path of the segmented movie file (.mkv) shown during a 
+        given run ('timeline').
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        Path
+            The path to the segmented movie file shown during a given run.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the .mkv file does not exist (DataLad content not fetched).
+        """
+        if self.timeseries:
+            seg_name = timeline['run'].split("_")[1][5:]
+        else:
+            seg_name = timeline['task']
+        mp = Path(
+            f"{self._stimuli_dir}/{seg_name[:-2]}"
+            f"/{seg_name}.mkv",
+        )
+        if not mp.exists():
+            raise FileNotFoundError(
+                f"Movie file not found: {mp}\n"
+                "Run study.download() or datalad get to fetch the content."
+            )
+        return mp
+
+
+    def _load_transcript(self, timeline: dict[str, tp.Any]) -> dict:
+        """
+        Load the speech-to-text transcript of the segmented movie 
+        shown during a given run ('timeline').
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        dict
+            The transcript for the segmented movie shown during a given run.
+        """
+        if self.timeseries:
+            seg_name = timeline['run'].split("_")[1][5:]
+        else:
+            seg_name = timeline['task']
+        tp = Path(
+            f"{self._annotations_dir}/annotations/transcripts/"
+            f"{seg_name[:-2]}/movie10_{seg_name}_model-AA_transcript.json",            
+        )
+        if not tp.exists():
+            return {
+                "transcript": "",
+                "words": [],
+            }
+        with open(tp, "r") as file:
+            transcript = json.load(file)
+
+        return transcript
 
 
     def _load_stimulus_events(
         self, timeline: dict[str, tp.Any], timeline_name: str,
     ) -> pd.DataFrame:
-        """Load Movie10 stimulus events with video clip file paths.
+        """Load Movie10 stimulus events. Loads run-wise Video event with
+        video clip file paths. Also extracts Word events from movie transcript.
+
+        Detects FPS (as frequency) and duration from movie file.
 
         Parameters
         ----------
@@ -241,34 +312,43 @@ class Movie10(CNeuroModStudy):
         Returns
         -------
         pd.DataFrame
-            Events table with ``type``, ``start``, ``duration``, ``filepath``.
+            Table with Movie event (run-wise) and Word events from movie transcript.
         """
-        # TODO: fix below to process movies and transcript words as events
-        if not self._bids_dir.exists():
-            return pd.DataFrame()
+        movie_path = self._get_movie_path(timeline)
+        movie_event: dict[str, tp.Any] = {
+            "type": "Video",
+            "start": 0.0,
+            "filepath": movie_path,
+            "timeline": timeline_name,
+        }
+        stimuli_events = [movie_event]
 
-        sub = timeline["subject"]
-        ses = timeline.get("session")
-        run = timeline.get("run")
-        task = timeline.get("task", self.TASK)
-
-        ep = events_path(self._bids_dir, sub, task, session=ses, run=run)
-        if not ep.exists():
-            return pd.DataFrame()
-
-        bids_events = load_events_tsv(ep)
-        stimuli_dir = self._bids_dir / "stimuli"
-
-        rows = []
-        for _, row in bids_events.iterrows():
-            event: dict[str, tp.Any] = {
-                "type": str(row.get("trial_type", "Stimulus")),
-                "start": float(row["onset"]),
-                "duration": float(row["duration"]),
+        transcript = self._load_transcript(timeline)
+        for word in transcript["words"]:
+            word_event : dict[str, tp.Any] = {
+                "type": "Word",
+                "text": word["word"],
+                "start": word["start"],
+                "stop": word["end"],
+                "duration": word["end"] - word["start"],
+                "language": "en",
+                "modality": "heard",
+                "timeline": timeline_name,
             }
-            stim_file = row.get("stim_file")
-            if stim_file and isinstance(stim_file, str):
-                event["filepath"] = str(stimuli_dir / stim_file)
-            rows.append(event)
+            stimuli_events.append(word_event)
+        if len(transcript["transcript"]):
+            text_start = transcript["words"][0]["start"]
+            text_stop = transcript["words"][-1]["end"]
+            text_event : dict[str, tp.Any] = {
+                "type": "Text",
+                "text": transcript["transcript"],
+                "start": text_start,
+                "stop": text_stop,
+                "duration": text_stop - text_start,
+                "language": "en",
+                "modality": "heard",
+                "timeline": timeline_name,
+            }
+            stimuli_events.append(text_event)
 
-        return pd.DataFrame(rows) if rows else pd.DataFrame()
+        return pd.DataFrame(stimuli_events)
