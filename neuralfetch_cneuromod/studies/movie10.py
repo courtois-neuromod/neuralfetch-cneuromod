@@ -178,7 +178,7 @@ class Movie10(CNeuroModStudy):
             compatible.
         """
         patterns = []
-        for mvie in MOVIES:
+        for mvie in self.MOVIES:
             patterns.extend([
                 # Movie dialogues transcribed with AssemblyAI speech-to-text
                 f"{self.path}/annotations/transcripts/{mvie}/"
