@@ -664,7 +664,7 @@ class CNeuroModStudy(_study.Study):
         return pd.DataFrame(rows)
 
 
-    @abstractmethod
+    #@abstractmethod
     def _extract_stimulus_event(
         self,
         row: pd.Series,
