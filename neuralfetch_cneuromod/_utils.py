@@ -306,7 +306,9 @@ def iter_tseries_runs(
     dict
         Keys: ``subject`` (str), ``file_path`` (Path), ``session`` (str),  ``task`` (None), ``run`` (str).
     """
-    available_subjects = get_subjects(f"{timeseries_dir}/timeseries/{timeseries}")
+    available_subjects = get_subjects(Path(
+        f"{timeseries_dir}/timeseries/{timeseries}"
+    ))
     if subjects is not None:
         available_subjects = [s for s in available_subjects if s in subjects]
 
