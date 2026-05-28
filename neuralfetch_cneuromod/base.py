@@ -34,6 +34,8 @@ import pandas as pd
 import pydantic
 
 from datalad import api as dl
+
+from neuralset.base import StrCast
 from neuralset.events import etypes
 from neuralset.events import study as _study
 
