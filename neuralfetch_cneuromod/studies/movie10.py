@@ -209,7 +209,7 @@ class Movie10(CNeuroModStudy):
 
         stimuli_patterns = self._stimuli_download_patterns()
         self.logger.info(
-            "[%s] stimuli patterns: %s", cls_name, stimuli_patterns
+            "[%s] stimuli patterns: %s", stimuli_patterns
         )
         _utils.datalad_get_list(stimuli_patterns, f"{self.path}/stimuli")
 
