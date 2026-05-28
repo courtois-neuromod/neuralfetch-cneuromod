@@ -216,7 +216,7 @@ class Movie10(CNeuroModStudy):
         transcript_patterns = self._annotations_download_patterns()
         self.logger.info(
             "[%s] transcript patterns (space=%s): %s",
-            cls_name, transcript_patterns,
+            transcript_patterns,
         )
         _utils.datalad_get_list(transcript_patterns, f"{self.path}/annotations")
 
