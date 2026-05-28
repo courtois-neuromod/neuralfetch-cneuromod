@@ -693,6 +693,22 @@ class CNeuroModStudy(_study.Study):
         return
 
 
+    def _cls_kwargs(self) -> dict[str, tp.Any]:
+        """Descriptor for the study instance parametrization"""
+        cls_kwargs: tp.Any = self.model_dump(serialize_as_any=True, exclude_defaults=True)
+        # Exclude standard fields from class kwargs
+        for p in ["infra", "infra_timelines", "path", "name", "query", "timeseries"]:
+            cls_kwargs.pop(p, None)
+        if cls_kwargs:
+            # should the class parameter be part of the timeline? or does
+            # it select a subset? the behavior is unclear and should be
+            # specified precisely first.
+            msg = "Class parameters are not yet supported, bring up your use-case!"
+            raise RuntimeError(msg)
+
+        return cls_kwargs
+
+
     def _load_timeline_events(
         self, timeline: dict[str, tp.Any]
     ) -> pd.DataFrame:

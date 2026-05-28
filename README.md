@@ -14,7 +14,7 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 | `HarryPotter` | Harry Potter audiobook | Auditory narrative |
 | `Mario` | Super Mario Bros gameplay | Video game |
 | `Shinobi` | Shinobi video game | Video game |
-| `Movie10` | 10 open-access Hollywood movies | Audio-visual movie |
+| `Movie10` | 3 Hollywood movies and 1 BBC documentary | Audio-visual movie |
 | `Things` | THINGS object image set | Visual object recognition |
 | `Floc` | Functional localizer (fLoc) | Visual categories |
 | `HcpTrt` | HCP-style test-retest | Multimodal |
@@ -52,7 +52,9 @@ cneuromod.all/
 ├── friends/
 │   ├── bids/          ← raw BIDS (MRI, events, stimuli)
 │   ├── fmriprep/      ← fMRIPrep derivatives (preprocessed BOLD)
-│   └── timeseries/    ← masked and denoised BOLD timeseries
+│   ├── timeseries/    ← masked and denoised BOLD timeseries
+│   ├── stimuli/       ← Friends episodes (.mkv) split per run
+│   └── annotations/   ← Friends episodes annotations, e.g., transcripts
 ├── harrypotter/
 │   ├── bids/
 │   ├── fmriprep/
