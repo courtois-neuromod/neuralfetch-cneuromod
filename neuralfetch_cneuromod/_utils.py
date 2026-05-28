@@ -131,7 +131,7 @@ def get_bold_runs(
     """
     sub_dir = fmriprep_dir / f"sub-{subject}" / f"ses-{session}" / "func"
 
-    if not func_dir.exists():
+    if not sub_dir.exists():
         return []
 
     pattern_parts = [
@@ -140,7 +140,7 @@ def get_bold_runs(
     ]
     
     pattern = "".join(pattern_parts)
-    bold_files = sorted(func_dir.glob(pattern))
+    bold_files = sorted(sub_dir.glob(pattern))
     runs = []
     for f in bold_files:
         # Extract task-run entity from filename
