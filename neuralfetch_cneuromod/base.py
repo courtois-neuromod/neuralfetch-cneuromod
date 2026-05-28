@@ -621,7 +621,7 @@ class CNeuroModStudy(_study.Study):
 
 
     def _load_stimulus_events(
-        self, timeline: dict[str, tp.Any], timeline_name: str,
+        self, timeline: dict[str, tp.Any], event_root: str,
     ) -> pd.DataFrame:
         """Load stimulus/behavioural events for *timeline*.
 
@@ -636,8 +636,8 @@ class CNeuroModStudy(_study.Study):
         timeline:
             Timeline dictionary with keys ``subject``, ``session``, ``run``,
             ``task``.
-        timeline_name:
-            Unique timeline identifier.
+        event_root:
+            Unique event file identifier.
 
         Returns
         -------
@@ -650,7 +650,7 @@ class CNeuroModStudy(_study.Study):
 
         ep_list = sorted(glob.glob(
             f"{self._bids_dir}/sub-{timeline['subject']}"
-            f"/*{timeline['session']}/{timeline_name}*events.tsv"
+            f"/*{timeline['session']}/{event_root}*events.tsv"
         ))
         if len(ep_list) != 1:
             self.logger.debug("No unique events file found: %s", ep_list[0])
@@ -739,8 +739,6 @@ class CNeuroModStudy(_study.Study):
         tr_s = _utils.DEFAULT_TR
         if self.timeseries is None:
             bold_path, n_TRs = self._get_scan_dur(timeline)
-            timeline_name = Path(bold_path).name.split(
-                "_space")[0].replace("_part-mag", "")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Fmri",
                 "start": 0.0,
@@ -753,13 +751,11 @@ class CNeuroModStudy(_study.Study):
                     "_desc-confounds_timeseries.tsv"),
                 "space": self.space,
                 "preproc": "fmriprep",
-                "timeline": timeline_name,
             }
+            event_root = Path(bold_path).name.split(
+                "_space")[0].replace("_part-mag", "")
         else:
             tseries_path, n_TRs = self._get_tseries_dur(timeline)
-            timeline_name = (
-                f"sub-{timeline['subject']}_"
-                f"{timeline['run'].split('_timeseries')[0]}")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Timeseries",
                 "start": 0.0,
@@ -768,11 +764,13 @@ class CNeuroModStudy(_study.Study):
                 "filepath": tseries_path,
                 "timeseries": self.timeseries,
                 "space": self.space,
-                "timeline": timeline_name,
             }
+            event_root = (
+                f"sub-{timeline['subject']}_"
+                f"{timeline['run'].split('_timeseries')[0]}")
 
         # --- Stimulus / behavioural events ---
-        stim_events = self._load_stimulus_events(timeline, timeline_name)
+        stim_events = self._load_stimulus_events(timeline, event_root)
 
         all_rows = [pd.DataFrame([fmri_row])]
         if not stim_events.empty:

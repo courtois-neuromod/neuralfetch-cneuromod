@@ -336,7 +336,6 @@ class Movie10(CNeuroModStudy):
                 "duration": word["end"] - word["start"],
                 "language": "en",
                 "modality": "heard",
-                "timeline": timeline_name,
             }
             stimuli_events.append(word_event)
         if len(transcript["transcript"]):
@@ -350,7 +349,6 @@ class Movie10(CNeuroModStudy):
                 "duration": text_stop - text_start,
                 "language": "en",
                 "modality": "heard",
-                "timeline": timeline_name,
             }
             stimuli_events.append(text_event)
 
