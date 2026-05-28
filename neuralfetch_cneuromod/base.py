@@ -212,7 +212,7 @@ class CNeuroModStudy(_study.Study):
 
     url: tp.ClassVar[str] = "https://www.cneuromod.ca/"
 
-    logger = logging.getLogger(__name__)
+    logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
     # -----------------------------------------------------------------
     # Pydantic fields
