@@ -156,7 +156,7 @@ class Movie10(CNeuroModStudy):
             compatible.
         """
         patterns = []
-        for mvie in MOVIES:
+        for mvie in self.MOVIES:
             patterns.extend([
                 # Movie stimuli MKVs shown for this movie-watching task
                 f"{self.path}/stimuli/{mvie}/{mvie}*.mkv",
