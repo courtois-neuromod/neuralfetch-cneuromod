@@ -40,8 +40,6 @@ from neuralset.events import study as _study
 from . import _utils
 _study._set_dir_permissions = _utils._set_dir_permissions
 
-logger = logging.getLogger(__name__)
-
 
 # GitHub URL for cneuromod.all repository, under which  
 # CNeuroMod datalad repositories are nested as a collection
@@ -213,6 +211,8 @@ class CNeuroModStudy(_study.Study):
     )
 
     url: tp.ClassVar[str] = "https://www.cneuromod.ca/"
+
+    logger = logging.getLogger(__name__)
 
     # -----------------------------------------------------------------
     # Pydantic fields
@@ -488,14 +488,14 @@ class CNeuroModStudy(_study.Study):
         cls_name = self.__class__.__name__
 
         bids_patterns = self._bids_download_patterns()
-        logger.info(
+        self.logger.info(
             "[%s] BIDS patterns: %s", cls_name, bids_patterns
         )
         _utils.datalad_get_list(bids_patterns, f"{self.path}/bids")
 
         if self.timeseries is None:
             fmriprep_patterns = self._fmriprep_download_patterns()
-            logger.info(
+            self.logger.info(
                 "[%s] fMRIPrep patterns (space=%s): %s",
                 cls_name, self.space, fmriprep_patterns,
             )
@@ -503,7 +503,7 @@ class CNeuroModStudy(_study.Study):
 
         else:
             timeseries_patterns = self._timeseries_download_patterns()
-            logger.info(
+            self.logger.info(
                 "[%s] timeseries patterns (timeseries=%s): %s",
                 cls_name, self.timeseries, timeseries_patterns,
             )
@@ -651,7 +651,7 @@ class CNeuroModStudy(_study.Study):
             f"/*{timeline['session']}/{timeline_name}*events.tsv"
         ))
         if len(ep_list) != 1:
-            logger.debug("No unique events file found: %s", ep_list[0])
+            self.logger.debug("No unique events file found: %s", ep_list[0])
             return pd.DataFrame()
 
         bids_events = pd.read_csv(ep_list[0], sep="\t")

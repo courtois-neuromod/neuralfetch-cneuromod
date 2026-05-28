@@ -208,13 +208,13 @@ class Movie10(CNeuroModStudy):
         super()._download()
 
         stimuli_patterns = self._stimuli_download_patterns()
-        logger.info(
+        self.logger.info(
             "[%s] stimuli patterns: %s", cls_name, stimuli_patterns
         )
         _utils.datalad_get_list(stimuli_patterns, f"{self.path}/stimuli")
 
         transcript_patterns = self._annotations_download_patterns()
-        logger.info(
+        self.logger.info(
             "[%s] transcript patterns (space=%s): %s",
             cls_name, transcript_patterns,
         )
