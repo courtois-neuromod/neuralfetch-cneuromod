@@ -254,7 +254,7 @@ def iter_bids_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``file_path`` (Path), ``session`` (str), ``task`` (str),
+        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str), ``task`` (str),
         ``run`` (str | None).
     """
     available_subjects = get_subjects(fmriprep_dir)
@@ -269,7 +269,7 @@ def iter_bids_runs(
                 session=ses, space=space,
             )
             for task, run, run_path in runs:
-                yield dict(subject=sub, file_path=run_path, session=ses, task=task, run=run)
+                yield dict(subject=sub, file_path=str(run_path), session=ses, task=task, run=run)
 
 
 def iter_tseries_runs(
@@ -304,7 +304,7 @@ def iter_tseries_runs(
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``file_path`` (Path), ``session`` (str),  ``task`` (None), ``run`` (str).
+        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str),  ``task`` (None), ``run`` (str).
     """
     available_subjects = get_subjects(Path(
         f"{timeseries_dir}/timeseries/{timeseries}"
@@ -322,7 +322,7 @@ def iter_tseries_runs(
         for ses in sessions:
             runs = list(sub_tseries[ses].keys())
             for run in runs:
-                yield dict(subject=sub, file_path=h5_path, session=ses, task=None, run=run)
+                yield dict(subject=sub, file_path=str(h5_path), session=ses, task=None, run=run)
 
 
 def load_bold_masked(

@@ -551,7 +551,7 @@ class CNeuroModStudy(_study.Study):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[Path, int]:
+    def _get_scan_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
         """Load a preprocessed BOLD run as a :class:`nibabel.Nifti1Image`, 
         return its full path and its number of volumes (duration in TRs).
 
@@ -563,7 +563,7 @@ class CNeuroModStudy(_study.Study):
 
         Returns
         -------
-        Path
+        str
             The path to the fMRIPrep preprocessed BOLD file.
         int
             The number of volumes (TRs) in the preprocessed BOLD image.
@@ -574,7 +574,7 @@ class CNeuroModStudy(_study.Study):
             If the BOLD file does not exist (DataLad content not fetched).
         """
         bp = timeline['file_path']
-        if not bp.exists():
+        if not Path(bp).exists():
             raise FileNotFoundError(
                 f"BOLD file not found: {bp}\n"
                 "Run study.download() or datalad get to fetch the content."
@@ -595,7 +595,7 @@ class CNeuroModStudy(_study.Study):
 
         Returns
         -------
-        Path
+        str
             The path to the subject's .hdf5 file that contains the run's timeseries.
         int
             The number of time points (TRs) in the run's timeseries.
@@ -606,7 +606,7 @@ class CNeuroModStudy(_study.Study):
             If the HDF5 file does not exist (DataLad content not fetched).
         """
         tp = timeline['file_path']
-        if not tp.exists():
+        if not Path(tp).exists():
             raise FileNotFoundError(
                 f"HDF5 file not found: {tp}\n"
                 "Run study.download() or datalad get to fetch the content."
@@ -737,8 +737,8 @@ class CNeuroModStudy(_study.Study):
         tr_s = _utils.DEFAULT_TR
         if self.timeseries is None:
             bold_path, n_TRs = self._get_scan_dur(timeline)
-            timeline_name = os.basename(
-                bold_path).split("_space")[0].replace("_part-mag", "")
+            timeline_name = Path(bold_path).name.split(
+                "_space")[0].replace("_part-mag", "")
             fmri_row: dict[str, tp.Any] = {
                 "type": "Fmri",
                 "start": 0.0,
