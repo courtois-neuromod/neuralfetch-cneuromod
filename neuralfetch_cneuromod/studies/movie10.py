@@ -25,8 +25,10 @@ import typing as tp
 
 import pandas as pd
 
-from neuralfetch_cneuromod.base import CNeuroModStudy
-#from neuralfetch_cneuromod._utils import events_path, load_events_tsv
+from neuralfetch_cneuromod.base import (
+    CNeuroModStudy,
+    _CNEUROMOD_GH,
+)
 
 
 class Movie10(CNeuroModStudy):
