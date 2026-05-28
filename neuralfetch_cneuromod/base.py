@@ -80,14 +80,6 @@ class Timeseries(etypes.BaseSplittableEvent):
     space : str
         Coordinate space before timeseries extraction,
         e.g. ``"MNI152NLin2009cAsym"``, ``"T1w"``.
-
-    Example (TODO: adjust to Timeseries)
-    --------
-    .. code-block:: python
-
-        video = Video(start=0, timeline="video_exp", filepath="video.mp4",
-                     offset=5.0, duration=10.0)
-        clip = video.read()  # Returns 10-second clip starting at 5s
     """
     subject: StrCast
     session: str | None = None
