@@ -25,11 +25,11 @@ import typing as tp
 
 import pandas as pd
 
+from neuralfetch_cneuromod import _utils
 from neuralfetch_cneuromod.base import (
     CNeuroModStudy,
     _CNEUROMOD_GH,
 )
-
 
 class Movie10(CNeuroModStudy):
     """Courtois NeuroMod — *Movie10* movie-watching fMRI dataset.
