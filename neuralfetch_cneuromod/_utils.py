@@ -105,7 +105,7 @@ def get_bold_runs(
     *,
     session: str | None = None,
     space: str = DEFAULT_SPACE,
-) -> list[str | None]:
+) -> list[tuple[str, str | None, Path]]:
     """Return sorted list of run labels for which a preproc BOLD file exists.
 
     When no ``run-`` entity is present in the filenames, returns ``[None]``
@@ -124,10 +124,10 @@ def get_bold_runs(
 
     Returns
     -------
-    list[tuple[str, Path, str]]
-        (Task run label (without ``task-`` prefix), 
-        run number (without ``run-`` prefix) or ``None`` if no run number,
-        full run path).
+    list[tuple[str, str | None, Path]]
+        - Task run label (without ``task-`` prefix), 
+        - Run number (without ``run-`` prefix) or ``None`` if no run number,
+        - Full path to run BOLD file
     """
     sub_dir = fmriprep_dir / f"sub-{subject}" / f"ses-{session}" / "func"
 
@@ -269,7 +269,10 @@ def iter_bids_runs(
                 session=ses, space=space,
             )
             for task, run, run_path in runs:
-                yield dict(subject=sub, file_path=str(run_path), session=ses, task=task, run=run)
+                yield dict(
+                    subject=sub, file_path=str(run_path),
+                    session=ses, task=task, run=run,
+                )
 
 
 def iter_tseries_runs(

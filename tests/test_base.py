@@ -14,103 +14,15 @@ import numpy as np
 import pytest
 
 from neuralfetch_cneuromod._utils import (
-    bold_path,
-    confounds_path,
-    events_path,
-    get_bold_runs,
-    get_sessions,
-    get_subjects,
+    get_bold_runs,#
+    get_sessions,#
+    get_subjects,#
     iter_bids_runs,
+    iter_tseries_runs,
     load_bold_masked,
     load_confounds_tsv,
-    load_events_tsv,
-    mask_path,
+    datalad_get_list,
 )
-
-
-# ---------------------------------------------------------------------------
-# bold_path
-# ---------------------------------------------------------------------------
-
-class TestBoldPath:
-    """Tests for the bold_path() path builder."""
-
-    def test_with_session_and_run(self, tmp_path: Path) -> None:
-        """bold_path() includes ses- and run- entities when provided."""
-        result = bold_path(tmp_path, "01", "friends", session="001", run=1)
-        assert "sub-01" in result.parts
-        assert result.name == (
-            "sub-01_ses-001_task-friends_run-1"
-            "_space-MNI152NLin2009cAsym_res-2_desc-preproc_bold.nii.gz"
-        )
-
-    def test_without_session(self, tmp_path: Path) -> None:
-        """bold_path() omits ses- entity when session=None."""
-        result = bold_path(tmp_path, "01", "friends", session=None, run=1)
-        assert "ses" not in result.name
-
-    def test_without_run(self, tmp_path: Path) -> None:
-        """bold_path() omits run- entity when run=None."""
-        result = bold_path(tmp_path, "01", "friends", session="001", run=None)
-        assert "run" not in result.name
-
-    def test_custom_space(self, tmp_path: Path) -> None:
-        """bold_path() uses custom space and resolution."""
-        result = bold_path(
-            tmp_path, "01", "friends",
-            session="001", run=1,
-            space="T1w", resolution="native",
-        )
-        assert "space-T1w" in result.name
-        assert "res-native" in result.name
-
-
-# ---------------------------------------------------------------------------
-# confounds_path
-# ---------------------------------------------------------------------------
-
-class TestConfoundsPath:
-    """Tests for the confounds_path() path builder."""
-
-    def test_name_format(self, tmp_path: Path) -> None:
-        """confounds_path() produces correct filename."""
-        result = confounds_path(tmp_path, "01", "friends", session="001", run=2)
-        assert result.name == (
-            "sub-01_ses-001_task-friends_run-2_desc-confounds_timeseries.tsv"
-        )
-
-    def test_no_run(self, tmp_path: Path) -> None:
-        """confounds_path() omits run entity when run=None."""
-        result = confounds_path(tmp_path, "01", "friends", session="001", run=None)
-        assert "run" not in result.name
-
-
-# ---------------------------------------------------------------------------
-# mask_path
-# ---------------------------------------------------------------------------
-
-class TestMaskPath:
-    """Tests for the mask_path() path builder."""
-
-    def test_name_format(self, tmp_path: Path) -> None:
-        """mask_path() produces correct filename."""
-        result = mask_path(tmp_path, "01", "friends", session="001", run=1)
-        assert "desc-brain_mask" in result.name
-        assert result.suffix == ".gz"
-
-
-# ---------------------------------------------------------------------------
-# events_path
-# ---------------------------------------------------------------------------
-
-class TestEventsPath:
-    """Tests for the events_path() path builder."""
-
-    def test_name_format(self, tmp_path: Path) -> None:
-        """events_path() produces correct BIDS events TSV filename."""
-        result = events_path(tmp_path, "01", "friends", session="001", run=1)
-        assert result.name == "sub-01_ses-001_task-friends_run-1_events.tsv"
-
 
 # ---------------------------------------------------------------------------
 # get_subjects / get_sessions
@@ -121,7 +33,7 @@ class TestEntityDiscovery:
 
     def test_get_subjects(self, cneuromod_root: Path) -> None:
         """get_subjects() finds sub-01 in the synthetic fixture."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
         subjects = get_subjects(fmriprep_dir)
         assert subjects == ["01"]
 
@@ -131,7 +43,7 @@ class TestEntityDiscovery:
 
     def test_get_sessions(self, cneuromod_root: Path) -> None:
         """get_sessions() finds ses-001 in the synthetic fixture."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
         sessions = get_sessions(fmriprep_dir, "01")
         assert sessions == ["001"]
 
@@ -149,15 +61,17 @@ class TestGetBoldRuns:
 
     def test_finds_two_runs(self, cneuromod_root: Path) -> None:
         """get_bold_runs() detects two runs in the synthetic fixture."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
-        runs = get_bold_runs(fmriprep_dir, "01", "friends", session="001")
-        assert sorted(runs) == ["1", "2"]
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        tasks = [t for t, _, _ in get_bold_runs(
+            fmriprep_dir, "01", session="001")]
+        assert sorted(tasks) == ["s01e01a", "s01e01b"]
 
     def test_no_runs_for_missing_session(self, cneuromod_root: Path) -> None:
         """get_bold_runs() returns [] for a non-existent session."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
-        runs = get_bold_runs(fmriprep_dir, "01", "friends", session="999")
-        assert runs == []
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        tasks = [t for t, _, _ in get_bold_runs(
+            fmriprep_dir, "01", session="999")]
+        assert tasks == []
 
 
 # ---------------------------------------------------------------------------
@@ -168,54 +82,43 @@ class TestIterBidsRuns:
     """Tests for iter_bids_runs()."""
 
     def test_yields_correct_triples(self, cneuromod_root: Path) -> None:
-        """iter_bids_runs() yields (sub, ses, run, task) for all BOLD files."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
-        triples = list(iter_bids_runs(fmriprep_dir, None, "friends"))
-        assert len(triples) == 2
-        for t in triples:
-            assert t["subject"] == "01"
-            assert t["session"] == "001"
-            assert t["task"] == "friends"
-            assert t["run"] in ("1", "2")
+        """iter_bids_runs() yields (sub, bold_path, ses, task, run) for all BOLD files."""
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_runs = list(iter_bids_runs(fmriprep_dir, subjects=None))
+        assert len(bids_runs) == 2
+        for br in bids_runs:
+            assert br["subject"] == "01"
+            assert br["session"] == "001"
+            assert "s01e01" in br["task"]
+            assert br["run"] is None
 
     def test_subject_filter(self, cneuromod_root: Path) -> None:
         """iter_bids_runs() respects the subjects filter."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
-        triples = list(
-            iter_bids_runs(fmriprep_dir, None, "friends", subjects=["99"])
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_runs = list(
+            iter_bids_runs(fmriprep_dir, subjects=["99"])
         )
-        assert triples == []
+        assert bids_runs == []
 
 
 # ---------------------------------------------------------------------------
-# load_events_tsv
+# iter_tseries_runs
 # ---------------------------------------------------------------------------
 
-class TestLoadEventsTsv:
-    """Tests for load_events_tsv()."""
+class TestIterTseriesRuns:
+    """Tests for iter_tseries_runs()."""
 
-    def test_loads_fixture(self, cneuromod_root: Path) -> None:
-        """load_events_tsv() reads the synthetic events file correctly."""
-        ep = events_path(
-            cneuromod_root / "Friends" / "bids",
-            "01", "friends", session="001", run=1,
-        )
-        df = load_events_tsv(ep)
-        assert "onset" in df.columns
-        assert "duration" in df.columns
-        assert len(df) == 5
-
-    def test_raises_on_missing_file(self, tmp_path: Path) -> None:
-        """load_events_tsv() raises FileNotFoundError for non-existent path."""
-        with pytest.raises(FileNotFoundError):
-            load_events_tsv(tmp_path / "nonexistent.tsv")
-
-    def test_raises_on_missing_columns(self, tmp_path: Path) -> None:
-        """load_events_tsv() raises ValueError when required columns are absent."""
-        bad = tmp_path / "bad_events.tsv"
-        bad.write_text("col_a\tcol_b\n1\t2\n")
-        with pytest.raises(ValueError, match="missing required columns"):
-            load_events_tsv(bad)
+    def test_yields_h5_runs(self, cneuromod_root: Path) -> None:
+        """iter_tseries_runs() yields (sub, hdf5_path, ses, task, run) for all
+        BOLD timeseries."""
+        timeseries_dir = cneuromod_root / "friends" / "timeseries" 
+        ts_runs = list(iter_tseries_runs(timeseries_dir, task="friends", subjects=None))
+        assert len(ts_runs) == 2
+        for ts in ts_runs:
+            assert ts["subject"] == "01"
+            assert ts["session"] == "ses-001"
+            assert ts["task"] is None
+            assert "s01e01" in ts["run"]
 
 
 # ---------------------------------------------------------------------------
@@ -227,22 +130,24 @@ class TestLoadConfoundsTsv:
 
     def test_loads_all_columns(self, cneuromod_root: Path) -> None:
         """load_confounds_tsv() returns all columns when no filter is applied."""
-        cp = confounds_path(
-            cneuromod_root / "Friends" / "fmriprep",
-            "01", "friends", session="001", run=1,
-        )
-        df = load_confounds_tsv(cp)
-        assert len(df) == 20  # 20 volumes
-        assert "trans_x" in df.columns
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_runs = list(iter_bids_runs(fmriprep_dir, subjects=None))
+        for br in bids_runs:
+            cp = Path(br['file_path'].split("_space")[0].replace(
+                "_part-mag", "") + "_desc-confounds_timeseries.tsv")
+            df = load_confounds_tsv(cp)
+            assert len(df) == 20  # 20 volumes
+            assert "trans_x" in df.columns
 
     def test_column_filter(self, cneuromod_root: Path) -> None:
         """load_confounds_tsv() returns only requested columns."""
-        cp = confounds_path(
-            cneuromod_root / "Friends" / "fmriprep",
-            "01", "friends", session="001", run=1,
-        )
-        df = load_confounds_tsv(cp, columns=["trans_x", "trans_y"])
-        assert list(df.columns) == ["trans_x", "trans_y"]
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_runs = list(iter_bids_runs(fmriprep_dir, subjects=None))
+        for br in bids_runs:
+            cp = Path(br['file_path'].split("_space")[0].replace(
+                "_part-mag", "") + "_desc-confounds_timeseries.tsv")
+            df = load_confounds_tsv(cp, columns=["trans_x", "trans_y"])
+            assert list(df.columns) == ["trans_x", "trans_y"]
 
     def test_raises_on_missing_file(self, tmp_path: Path) -> None:
         """load_confounds_tsv() raises FileNotFoundError for non-existent path."""
@@ -259,21 +164,21 @@ class TestLoadBoldMasked:
 
     def test_loads_unmasked(self, cneuromod_root: Path) -> None:
         """load_bold_masked() returns (n_voxels, n_volumes) without a mask."""
-        bp = bold_path(
-            cneuromod_root / "Friends" / "fmriprep",
-            "01", "friends", session="001", run=1,
-        )
-        arr = load_bold_masked(bp, mask_path_=None)
-        assert arr.ndim == 2
-        assert arr.shape[1] == 20  # n_volumes
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_runs = list(iter_bids_runs(fmriprep_dir, subjects=None))
+        for br in bids_runs:
+            arr = load_bold_masked(Path(br['file_path']), mask_path_=None)
+            assert arr.ndim == 2
+            assert arr.shape[1] == 20  # n_volumes
 
     def test_loads_with_mask(self, cneuromod_root: Path) -> None:
         """load_bold_masked() applies brain mask and reduces spatial dimension."""
-        fmriprep_dir = cneuromod_root / "Friends" / "fmriprep"
-        bp = bold_path(fmriprep_dir, "01", "friends", session="001", run=1)
-        mp = mask_path(fmriprep_dir, "01", "friends", session="001", run=1)
+        fmriprep_dir = cneuromod_root / "friends" / "fmriprep"
+        bids_run = list(iter_bids_runs(fmriprep_dir, subjects=None))[0]
+        bp = Path(bids_run["file_path"])
+        mp = Path(bids_run["file_path"].replace("desc-preproc_bold", "desc-brain_mask"))
         arr_no_mask = load_bold_masked(bp, mask_path_=None)
-        arr_masked = load_bold_masked(bp, mask_path_=mp)
+        arr_masked = load_bold_masked(bp, mask_path_= mp)
         # Masked array should have fewer voxels than the full flat array
         assert arr_masked.shape[0] < arr_no_mask.shape[0]
         assert arr_masked.shape[1] == 20

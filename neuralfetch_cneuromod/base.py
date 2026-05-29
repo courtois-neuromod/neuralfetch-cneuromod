@@ -987,7 +987,7 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         }
 
     def _load_stimulus_events(
-        self, timeline: dict[str, tp.Any], timeline_name: str,
+        self, timeline: dict[str, tp.Any], event_root: str,
     ) -> pd.DataFrame:
         """Load movie stimulus events. Loads run-wise Video event with
         video clip file paths. Also extracts Word events from movie transcript.
@@ -998,8 +998,8 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         ----------
         timeline:
             Timeline dict with ``subject``, ``session``, ``run``, ``task``.
-        timeline_name:
-            Unique timeline identifier.
+        event_root:
+            Unique event file identifier.
 
         Returns
         -------
