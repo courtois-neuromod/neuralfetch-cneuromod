@@ -26,13 +26,10 @@ from pathlib import Path
 
 import pandas as pd
 
-from neuralfetch_cneuromod import _utils
-from neuralfetch_cneuromod.base import (
-    CNeuroModStudy,
-    _CNEUROMOD_GH,
-)
+from neuralfetch_cneuromod.base import CNeuroModMovieStudy
 
-class Movie10(CNeuroModStudy):
+
+class Movie10(CNeuroModMovieStudy):
     """Courtois NeuroMod — *Movie10* movie-watching fMRI dataset.
 
     Six subjects watched 10 hours of Hollywood movies/BBC documentary while 
@@ -77,66 +74,8 @@ class Movie10(CNeuroModStudy):
     description: tp.ClassVar[str] = (
         "Six subjects watching 10 hours of Hollywood movies / BBC documentary during 3T fMRI."
     )
-    bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
+    bibtex: tp.ClassVar[str] = CNeuroModMovieStudy.bibtex
 
-
-    # -----------------------------------------------------------------
-    # Directory resolution
-    # -----------------------------------------------------------------
-
-    def model_post_init(self, log__: tp.Any) -> None:
-        """Resolve stimuli and annotation subdirectory paths after init."""
-        super().model_post_init(log__)
-        self._stimuli_dir = self._resolve_subdir("stimuli", self._stimuli_repo_url())
-        self._annotations_dir = self._resolve_subdir("annotations", self._annotations_repo_url())
-
-    # -----------------------------------------------------------------
-    # Directory accessors
-    # -----------------------------------------------------------------
-
-    @property
-    def stimuli_dir(self) -> Path:
-        """Path to the stimulus DataLad repository with 
-        audio-visual movie files in .mkv format.
-
-        Returns
-        -------
-        Path
-            ``{path}/stimuli``
-        """
-        return self._stimuli_dir
-
-    @property
-    def annotations_dir(self) -> Path:
-        """Path to the annotations DataLad repository with 
-        time-stamped movie scripts (dialogue).
-
-        Returns
-        -------
-        Path
-            ``{path}/annotations``
-        """
-        return self._annotations_dir
-
-    # -----------------------------------------------------------------
-    # Repository URL / name helpers
-    # -----------------------------------------------------------------
-
-    def _stimuli_repo_name(self) -> str:
-        """Repository name for the stimuli dataset (without ``.git`` suffix)."""
-        return self.STIMULI_REPO
-
-    def _annotations_repo_name(self) -> str:
-        """Repository name for the annotations dataset."""
-        return self.TRANSCRIPTS_REPO
-
-    def _stimuli_repo_url(self) -> str:
-        """GitHub SSH URL for the stimuli dataset."""
-        return _CNEUROMOD_GH.format(repo=self.STIMULI_REPO)
-
-    def _annotations_repo_url(self) -> str:
-        """GitHub SSH URL for the annotations dataset."""
-        return _CNEUROMOD_GH.format(repo=self.TRANSCRIPTS_REPO)
 
     # -----------------------------------------------------------------
     # Download pattern builders
@@ -169,7 +108,7 @@ class Movie10(CNeuroModStudy):
 
         Transcripts for movies segmented for individual runs are targeted:
 
-        * e.g., ``bourne01.json``
+        * e.g., ``movie10_bourne01_model-AA_transcript.json``
 
         Returns
         -------
@@ -186,40 +125,6 @@ class Movie10(CNeuroModStudy):
                 f"movie10_{mvie}*_model-AA_transcript.json",
             ])
         return patterns
-
-    # -----------------------------------------------------------------
-    # Download
-    # -----------------------------------------------------------------
-
-    def _download(self) -> None:
-        """Selectively fetch data files from stimuli and transcripts DataLad 
-        repositories.
-
-        Pulls files selectively by passing BIDS glob patterns to ``datalad get``.
-
-        Pulled files include:
-        * **stimuli** — cloned; only ``*.mkv`` matching individual runs 
-        are fetched.  
-        * **annotations** — cloned; only ``*.json`` matching individual runs 
-        are fetched.  
-
-        The patterns are built by :meth:`_stimuli_download_patterns` and
-        :meth:`_annotations_download_patterns` from the current field values.
-        """
-        super()._download()
-
-        stimuli_patterns = self._stimuli_download_patterns()
-        self.logger.info(
-            "[%s] stimuli patterns: %s", stimuli_patterns
-        )
-        _utils.datalad_get_list(stimuli_patterns, f"{self.path}/stimuli")
-
-        transcript_patterns = self._annotations_download_patterns()
-        self.logger.info(
-            "[%s] transcript patterns (space=%s): %s",
-            transcript_patterns,
-        )
-        _utils.datalad_get_list(transcript_patterns, f"{self.path}/annotations")
 
     # -----------------------------------------------------------------
     # Event loading
@@ -296,60 +201,3 @@ class Movie10(CNeuroModStudy):
 
         return transcript
 
-
-    def _load_stimulus_events(
-        self, timeline: dict[str, tp.Any], timeline_name: str,
-    ) -> pd.DataFrame:
-        """Load Movie10 stimulus events. Loads run-wise Video event with
-        video clip file paths. Also extracts Word events from movie transcript.
-
-        Detects FPS (as frequency) and duration from movie file.
-
-        Parameters
-        ----------
-        timeline:
-            Timeline dict with ``subject``, ``session``, ``run``, ``task``.
-        timeline_name:
-            Unique timeline identifier.
-
-        Returns
-        -------
-        pd.DataFrame
-            Table with Movie event (run-wise) and Word events from movie transcript.
-        """
-        movie_path = self._get_movie_path(timeline)
-        movie_event: dict[str, tp.Any] = {
-            "type": "Video",
-            "start": 0.0,
-            "filepath": movie_path,
-            "timeline": timeline_name,
-        }
-        stimuli_events = [movie_event]
-
-        transcript = self._load_transcript(timeline)
-        for word in transcript["words"]:
-            word_event : dict[str, tp.Any] = {
-                "type": "Word",
-                "text": word["word"],
-                "start": word["start"],
-                "stop": word["end"],
-                "duration": word["end"] - word["start"],
-                "language": "en",
-                "modality": "heard",
-            }
-            stimuli_events.append(word_event)
-        if len(transcript["transcript"]):
-            text_start = transcript["words"][0]["start"]
-            text_stop = transcript["words"][-1]["end"]
-            text_event : dict[str, tp.Any] = {
-                "type": "Text",
-                "text": transcript["transcript"],
-                "start": text_start,
-                "stop": text_stop,
-                "duration": text_stop - text_start,
-                "language": "en",
-                "modality": "heard",
-            }
-            stimuli_events.append(text_event)
-
-        return pd.DataFrame(stimuli_events)
