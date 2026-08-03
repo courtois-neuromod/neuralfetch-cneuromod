@@ -10,17 +10,21 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 
 | Study class | Dataset | Task |
 |---|---|---|
+| `Emotion-videos` | Cohen & Keltner emotion-evoking videos | Visual movie |
+| `Floc` | Functional localizer (fLoc) | Semantic image categories |
 | `Friends` | Friends TV show seasons 1-6 | Audio-visual movie |
-| `HarryPotter` | Harry Potter audiobook | Auditory narrative |
-| `Mario` | Super Mario Bros gameplay | Video game |
-| `Shinobi` | Shinobi video game | Video game |
-| `Movie10` | 3 Hollywood movies and 1 BBC documentary | Audio-visual movie |
-| `Things` | THINGS object image set | Visual object recognition |
-| `Floc` | Functional localizer (fLoc) | Visual categories |
-| `HcpTrt` | HCP-style test-retest | Multimodal |
-| `Retinotopy` | Population receptive fields | Visual retinotopy |
 | `Gamepad` | Gamepad motor task | Motor |
-| `CNeuroModAnat` | Anatomy / structural MRI | — |
+| `HarryPotter` | Harry Potter book chapter | Written narrative |
+| `HcpTrt` | HCP-style test-retest | Multimodal |
+| `PetitPrince` | Le Petit Prince audiobook | Auditory narrative |
+| `Mario` | Super Mario Bros gameplay | Video game |
+| `MarioStars` | Super Mario All-stars gameplay | Video game |
+| `Movie10` | 3 Hollywood movies and 1 BBC documentary | Audio-visual movie |
+| `Narratives` | Stories from Nastase stimulus set | Auditory narrative and free recall |
+| `Retinotopy` | HCP retinotopy stimuli | Visual retinotopy |
+| `Shinobi` | Shinobi video game | Video game |
+| `Things` | THINGS object image set | Visual object recognition |
+| `Triplets` | Set of concrete written words | Word similarity judgement |
 
 ## User Install
 
@@ -100,26 +104,25 @@ from neuralfetch_cneuromod.studies.friends import Friends
 study = Friends(path="path/to/cneuromod.all")
 print(study.study_summary())
 
-# By default, the Study class tracks fMRI data processed with fMRIprep.
-# Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries.
+# By default, the Study class tracks fMRI data pre-processed with fMRIprep.
+# Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
 # e.g., study = Friends(path="path/to/cneuromod.all", timeseries='cneuromod2026')
 
 # Load all events as a neuralset-compatible DataFrame
-# This step uses `datalad get` to download files selectively, 
-# Warning: the first attempt is much slowed than subsequent ones
+# This step uses the `datalad get` command to download files selectively. 
+# Warning: the first attempt is much slower than subsequent ones due to file downloads.
 events = study.run()
 
 # Optionally, you can pre-download data files as a separate step 
 # (requires SSH key + access) before `study.run()`
-# Consider running this step inside tmux
+# Consider running this step inside a tmux session.
 study.download()
 ```
 
 
 ## License
 
-MIT. The CNeuroMod datasets themselves are CC0 (open subjects 01, 03, 05) or require a
-data transfer agreement for all 6 subjects. See https://www.cneuromod.ca/ for details.
+MIT. The CNeuroMod datasets themselves are CC0 (open subjects 01, 02, 03, 05, 06) or require a data transfer agreement for all 6 subjects. See https://www.cneuromod.ca/ for details.
 
 ## Citation
 

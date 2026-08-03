@@ -1,19 +1,25 @@
-"""Harry Potter book reading fMRI dataset.
+"""Le Petit Prince audibook listening fMRI dataset.
 
-Five subjects (sub-01, sub-02, sub-03, sub-05 and sub-06) read chapter 9 of the book
-Harry Potter and the Philosopher's Stone (1997) while undergoing 3T fMRI.  
+Five subjects (sub-01, sub-02, sub-03, sub-05 and sub-06) listened to an 
+audiobook version of Le Petit Prince (1943), narrated both in English and 
+French by a female-sounding voice, while undergoing 3T fMRI. 
 
-The text was presented word by word at a 2Hz pace (each word presented for 0.5s),
-and split across 7 fMRI runs of ~9 to ~14 min in duration administered in a single session.
+Audio stimuli (.wav) were obtained from:
+Jixing Li, John Hale, and Christophe Pallier (2022). Le Petit Prince: A multilingual 
+fMRI corpus using ecological stimuli. OpenNeuro. [Dataset] doi: doi:10.18112/openneuro.ds003643.v2.0.0  
 
-Stimuli are stored as time-stamped single words inside _events.tsv files in
-the raw BIDS repository.
+The listening task was split into 18 fMRI runs (9 runs in each language) of ~9min to ~13min
+administered across multiple sessions for each subject. 
+
+# TODO: petit-prince.stimuli w hyperlinks to external clone of open neuro repo?
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/en/latest/DATASETS.html#harrypotter
-* DataLad BIDS repo: https://github.com/courtois-neuromod/harrypotter
-* DataLad fMRIPrep repo: https://github.com/courtois-neuromod/harrypotter.fmriprep
+* DataLad BIDS repo: https://github.com/courtois-neuromod/petit-prince
+* DataLad fMRIPrep repo: https://github.com/courtois-neuromod/petit-prince.fmriprep
+* DataLad timeseries repo: https://github.com/courtois-neuromod/petit-prince.timeseries
+* TODO DataLad stimuli repo: https://github.com/courtois-neuromod/petit-prince.stimuli
+* DataLad transcripts repo: https://github.com/courtois-neuromod/petit-prince.annotations
 """
 
 from __future__ import annotations
@@ -26,17 +32,17 @@ from neuralfetch_cneuromod.base import CNeuroModStudy
 #from neuralfetch_cneuromod._utils import events_path, load_events_tsv
 
 
-class HarryPotter(CNeuroModStudy):
-    """Courtois NeuroMod — *Harry Potter* audiobook listening dataset.
+class PetitPrince(CNeuroModStudy):
+    """Courtois NeuroMod — *Petit Prince* audiobook listening dataset (EN and FR).
 
-    Five subjects read chapter 9 of Harry Potter and the Philosopher's Stone
-    (1997) during 3T fMRI.  Each BOLD run covers one segment of the chapter.
+    Five subjects listened to an audiobook verion of Le Petit Prince (1943) in French and 
+    then in English during 3T fMRI.  Each BOLD run covers one segment of the book.
 
     Parameters
     ----------
     path:
-        Root data directory.  Resolves ``{path}/HarryPotter/bids`` and
-        ``{path}/HarryPotter/fmriprep``.
+        Root data directory.  Resolves ``{path}/petit-prince/bids`` and
+        ``{path}/petit-rince/fmriprep``.
     space:
         fMRIPrep output space (default ``"MNI152NLin2009cAsym"``).
     resolution:
