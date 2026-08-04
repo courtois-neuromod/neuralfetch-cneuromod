@@ -63,6 +63,7 @@ class TimeseriesExtractor(BaseExtractor):
     frequency: tp.Literal["native"] | float = "native"
 
     query: base.Query | None = None
+    infra: MapInfra | None = None
     #infra: MapInfra = MapInfra(
     #    timeout_min=120,
     #    cpus_per_task=10,
@@ -74,7 +75,7 @@ class TimeseriesExtractor(BaseExtractor):
         rec = event.read()
         header: dict[str, tp.Any] = {"timeseries": event.timeseries, "space": event.space}
         return TimedArray(
-            data=data.astype(np.float32),
+            data=rec.astype(np.float32),
             frequency=event.frequency,
             start=float("inf"),
             duration=event.duration,

@@ -35,7 +35,7 @@ import pydantic
 
 from datalad import api as dl
 
-from neuralset.base import StrCast
+from neuralset.base import StrCast, Frequency
 from neuralset.events import etypes
 from neuralset.events import study as _study
 
