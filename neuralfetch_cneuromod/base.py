@@ -116,7 +116,7 @@ class Timeseries(etypes.BaseSplittableEvent):
 
     def _read(self) -> tp.Any:
         with h5py.File(self.filepath, "r") as f:
-            tseries = np.array(f[self.session][self.run])
+            tseries = np.array(f[self.session][self.run]).T
         return tseries
 
     # TODO: Do I redefine split??? Fmri class does not... probably fine. (implemented in _read?)
