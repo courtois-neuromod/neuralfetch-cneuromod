@@ -10,9 +10,10 @@ https://github.com/facebookresearch/neuroai/blob/af8ce00c38aae77d4154c97714a12b2
 """
 from exca import MapInfra
 from tqdm import tqdm
+import typing as tp
 
 import numpy as np
-from neuralset.base import BaseExtractor as BaseExtractor
+from neuralset import BaseExtractor as BaseExtractor
 from neuralset.base import TimedArray as TimedArray
 
 from neuralfetch_cneuromod.base import Timeseries
@@ -62,11 +63,11 @@ class TimeseriesExtractor(BaseExtractor):
     frequency: tp.Literal["native"] | float = "native"
 
     query: base.Query | None = None
-    #infra: MapInfra = MapInfra(
-    #    timeout_min=120,
-    #    cpus_per_task=10,
-    #    version="2",
-    #)
+    infra: MapInfra = MapInfra(
+        timeout_min=120,
+        cpus_per_task=10,
+        version="2",
+    )
 
     def _preprocess_event(self, event: Timeseries) -> TimedArray:
         """"""
@@ -78,7 +79,6 @@ class TimeseriesExtractor(BaseExtractor):
             start=float("inf"),
             duration=event.duration,
             header=header,
-
         )
         
     def _get_data(self, events: list[Timeseries]) -> tp.Iterable[TimedArray]:
