@@ -59,13 +59,14 @@ class TimeseriesExtractor(BaseExtractor):
         "trigger",
     ] = "single" 
     allow_missing: bool = False
+    frequency: tp.Literal["native"] | float = "native"
 
     query: base.Query | None = None
-    infra: MapInfra = MapInfra(
-        timeout_min=120,
-        cpus_per_task=10,
-        version="2",
-    )
+    #infra: MapInfra = MapInfra(
+    #    timeout_min=120,
+    #    cpus_per_task=10,
+    #    version="2",
+    #)
 
     def _preprocess_event(self, event: Timeseries) -> TimedArray:
         """"""
@@ -74,7 +75,7 @@ class TimeseriesExtractor(BaseExtractor):
         return TimedArray(
             data=data.astype(np.float32),
             frequency=event.frequency,
-            start=event.start,
+            start=float("inf",
             duration=event.duration,
             header=header,
 
