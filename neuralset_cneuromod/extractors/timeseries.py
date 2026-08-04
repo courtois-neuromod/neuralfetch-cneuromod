@@ -75,7 +75,7 @@ class TimeseriesExtractor(BaseExtractor):
         return TimedArray(
             data=data.astype(np.float32),
             frequency=event.frequency,
-            start=float("inf",
+            start=float("inf"),
             duration=event.duration,
             header=header,
 
