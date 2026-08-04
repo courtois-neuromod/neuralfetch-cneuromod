@@ -13,7 +13,7 @@ from tqdm import tqdm
 import typing as tp
 
 import numpy as np
-from neuralset import BaseExtractor as BaseExtractor
+from neuralset import base, BaseExtractor
 from neuralset.base import TimedArray as TimedArray
 
 from neuralfetch_cneuromod.base import Timeseries
