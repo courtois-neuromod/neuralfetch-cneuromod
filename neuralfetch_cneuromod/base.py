@@ -35,6 +35,7 @@ import pydantic
 
 from datalad import api as dl
 
+from exca.steps.backends import Cached
 from neuralset.base import StrCast, Frequency
 from neuralset.events import etypes
 from neuralset.events import study as _study
@@ -242,7 +243,8 @@ class CNeuroModStudy(_study.Study):
             self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_url())
         else:
             self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
-        self.timelines.infra={'backend': 'Cached'}
+        self.timelines.infra = Cached(folder=self.infra.folder)
+        #{'backend': 'Cached', 'folder': self.infra.folder}
 
     # -----------------------------------------------------------------
     # Directory resolution
