@@ -113,11 +113,11 @@ class Timeseries(etypes.BaseSplittableEvent):
         end_vol = start_vol + sr.to_ind(self.duration)
         if start_vol == 0 and end_vol >= tseries.shape[0]:
             return tseries
-        return tseries[start_vol:end_vol, :]  # chunked
+        return tseries[:, start_vol:end_vol]  # chunked
 
     def _read(self) -> tp.Any:
         with h5py.File(self.filepath, "r") as f:
-            tseries = np.array(f[self.session][self.run]).T
+            tseries = np.array(f[self.session][self.run]).T  # TimedArray last dim is time when freq > 0
         return tseries
 
     # TODO: Do I redefine split??? Fmri class does not... probably fine. (implemented in _read?)
@@ -244,7 +244,6 @@ class CNeuroModStudy(_study.Study):
         else:
             self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
         self.timelines.infra = Cached(folder=self.infra.folder)
-        #{'backend': 'Cached', 'folder': self.infra.folder}
 
     # -----------------------------------------------------------------
     # Directory resolution
