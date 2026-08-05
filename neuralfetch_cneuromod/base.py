@@ -120,10 +120,6 @@ class Timeseries(etypes.BaseSplittableEvent):
             tseries = np.array(f[self.session][self.run]).T  # TimedArray last dim is time when freq > 0
         return tseries
 
-    # TODO: Do I redefine split??? Fmri class does not... probably fine. (implemented in _read?)
-    #def _split():
-        # https://github.com/facebookresearch/neuroai/blob/30303b368ef2bd3c4524193f9a654c3d89f9d9a3/neuralset-repo/neuralset/events/etypes.py#L423
-
 
 class CNeuroModStudy(_study.Study):
     """Abstract base class for all Courtois NeuroMod study fetchers.

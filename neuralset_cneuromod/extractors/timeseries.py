@@ -1,14 +1,3 @@
-"""
-Create new extractor class (tutorial)
-https://facebookresearch.github.io/neuroai/neuralset/auto_examples/walkthrough/04_extractors.html
-
-Reference: neuro (fMRI/MEG/spikes/EEG) extractors
-https://github.com/facebookresearch/neuroai/blob/main/neuralset-repo/neuralset/extractors/neuro.py
-
-https://github.com/facebookresearch/neuroai/blob/af8ce00c38aae77d4154c97714a12b2af332f1a1/neuralset-repo/neuralset/extractors/neuro.py#L1785
-
-"""
-from exca import MapInfra
 from tqdm import tqdm
 import typing as tp
 
@@ -20,13 +9,10 @@ from neuralfetch_cneuromod.base import Timeseries
 
 
 class TimeseriesExtractor(BaseExtractor):
-    """fMRI timeseries extraction with optional caching to a NumPy memmap.
+    """fMRI timeseries extraction (no caching).
 
-    Input: an HDF5 file with fmri timeseries of shape [n_voxels/n_parcels, time] nested per session 
-    and per run for each subject.
-
-    Optional **Temporal resampling** (``frequency``):
-       If active, resamples the data to the target frequency, using np.interp.
+    Input: an HDF5 file with fmri timeseries of shape [time, n_voxels/n_parcels] nested 
+    per session and per run for each subject.
 
     Parameters
     ----------
@@ -34,17 +20,6 @@ class TimeseriesExtractor(BaseExtractor):
         Seconds to shift TRs forward to align delayed BOLD response.
     frequency : ``"native"`` | float
         Target sampling frequency.
-    padding : int | ``"auto"`` | None
-        Pad 1-D+T data to a uniform voxel count across subjects.
-    query : Query | None
-        Per-event predicate selecting which fMRI variant(s) to load, evaluated
-        directly on ``Fmri`` event objects. This is a deliberate subset of the
-        pandas ``QueryEvents`` dialect: it supports ``space``, ``preproc``, and
-        ``study`` string conditions with ``==``, ``!=``, ``in``, and ``not in``
-        combined with ``and``/``or``/``not``. Referenced names are validated at
-        construction, so typos fail fast — including in short-circuited
-        branches. For richer filters, use a
-        ``QueryEvents`` transform upstream.
     """
     offset: float = 0.0
     event_types: tp.Literal["Timeseries"] = "Timeseries"
@@ -62,8 +37,6 @@ class TimeseriesExtractor(BaseExtractor):
     allow_missing: bool = False
     frequency: tp.Literal["native"] | float = "native"
 
-    query: base.Query | None = None
-
     def _preprocess_event(self, event: Timeseries) -> TimedArray:
         """"""
         rec = event.read()
@@ -77,7 +50,7 @@ class TimeseriesExtractor(BaseExtractor):
         )
         
     def _get_data(self, events: list[Timeseries]) -> tp.Iterable[TimedArray]:
-        """expensive per-event computation (typically cached via ``exca.MapInfra``)"""
+        """per-event computation (no caching)"""
         for event in tqdm(events, disable=len(events) < 2, desc="Processing timeseries data"):
             yield self._preprocess_event(event)
 
