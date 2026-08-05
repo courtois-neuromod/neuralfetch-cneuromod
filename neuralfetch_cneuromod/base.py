@@ -242,7 +242,7 @@ class CNeuroModStudy(_study.Study):
             self._fmriprep_dir = self._resolve_subdir("fmriprep", self._fmriprep_repo_url())
         else:
             self._timeseries_dir = self._resolve_subdir("timeseries", self._timeseries_repo_url())
-        self.infra_timelines.cluster = None
+        self.timelines.infra={'backend': 'Cached'}
 
     # -----------------------------------------------------------------
     # Directory resolution
