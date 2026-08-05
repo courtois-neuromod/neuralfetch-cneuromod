@@ -692,7 +692,7 @@ class CNeuroModStudy(_study.Study):
         """Descriptor for the study instance parametrization"""
         cls_kwargs: tp.Any = self.model_dump(serialize_as_any=True, exclude_defaults=True)
         # Exclude standard fields from class kwargs
-        for p in ["infra", "infra_timelines", "path", "name", "query", "timeseries"]:
+        for p in ["infra", "timelines", "path", "name", "query", "timeseries"]:
             cls_kwargs.pop(p, None)
         if cls_kwargs:
             # should the class parameter be part of the timeline? or does
