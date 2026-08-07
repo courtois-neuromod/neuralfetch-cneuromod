@@ -735,7 +735,7 @@ class CNeuroModStudy(_study.Study):
                 "duration": float(n_TRs) * tr_s,
                 "frequency": 1.0 / tr_s,
                 "filepath": bold_path,
-                "mask_filepath": bold_path.replace("_bold.", "_mask."),
+                "mask_filepath": bold_path.replace("preproc_bold.", "brain_mask."),
                 "confounds_filepath": bold_path.replace(
                     f"_space-{self.space}_desc-preproc_bold.nii.gz",
                     "_desc-confounds_timeseries.tsv"),
