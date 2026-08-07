@@ -6,7 +6,7 @@ seasons 1-6 (totalling >50 hours of audio-visual stimulation).
 
 Most episodes are split into two BOLD runs (labelled a and b), and double episodes are split
 into up to four BOLD runs (a, b, c and d).  Stimuli are provided as video clip files (.mkv)
-in the ``stimuli`` repository. Corresponding movie transcripts are provuded in the annotations
+in the ``stimuli`` repository. Corresponding movie transcripts are provided in the annotations
 repository.
 
 References
@@ -16,7 +16,7 @@ References
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/friends.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/friends.timeseries
 * DataLad stimuli repo: https://github.com/courtois-neuromod/friends.stimuli
-* DataLad transcripts repo: https://github.com/courtois-neuromod/friends.annotations
+* DataLad annotations repo: https://github.com/courtois-neuromod/friends.annotations
 """
 
 from __future__ import annotations
@@ -121,8 +121,8 @@ class Friends(CNeuroModMovieStudy):
             compatible.
         """
         return [
-            f"{self.path}/annotations/transcripts/s*/"
-            "friends_s0*e*_model-AA_desc-wUtter_transcript.json",
+            f"{self.path}/annotations/automated_transcription/s*/"
+            "friends_s0*e*_model-AA_desc-wUtter_transcript.json",  # TODO: update desc-wSpeaker
         ]
 
     # -----------------------------------------------------------------
@@ -187,7 +187,7 @@ class Friends(CNeuroModMovieStudy):
         else:
             seg_name = timeline['task']
         tp = Path(  # TODO: adjust based on friends.annotations structure
-            f"{self._annotations_dir}/annotations/transcripts/"
+            f"{self._annotations_dir}/annotations/automated_transcription/"
             f"s{seg_name[2]}/friends_{seg_name}_model-AA_desc-wUtter_transcript.json",            
         )
         if not tp.exists():

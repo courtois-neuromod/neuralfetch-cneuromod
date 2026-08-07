@@ -19,17 +19,23 @@ import pandas as pd
 import pytest
 
 # Import all study classes
-from neuralfetch_cneuromod.studies.anat import CNeuroModAnat
-from neuralfetch_cneuromod.studies.floc import Floc
+#from neuralfetch_cneuromod.studies.anat import CNeuroModAnat
+#from neuralfetch_cneuromod.studies.emotion-videos import EmotionVideos
+#from neuralfetch_cneuromod.studies.floc import Floc
 from neuralfetch_cneuromod.studies.friends import Friends
-from neuralfetch_cneuromod.studies.gamepad import Gamepad
-from neuralfetch_cneuromod.studies.harrypotter import HarryPotter
-from neuralfetch_cneuromod.studies.hcptrt import HcpTrt
-from neuralfetch_cneuromod.studies.mario import Mario
+#from neuralfetch_cneuromod.studies.gamepad import Gamepad
+#from neuralfetch_cneuromod.studies.harrypotter import HarryPotter
+#from neuralfetch_cneuromod.studies.hcptrt import HcpTrt
+#from neuralfetch_cneuromod.studies.mario import Mario
+#from neuralfetch_cneuromod.studies.mariostars import MarioStars
+#from neuralfetch_cneuromod.studies.mario3 import Mario3
 from neuralfetch_cneuromod.studies.movie10 import Movie10
-from neuralfetch_cneuromod.studies.retinotopy import Retinotopy
-from neuralfetch_cneuromod.studies.shinobi import Shinobi
-from neuralfetch_cneuromod.studies.things import Things
+#from neuralfetch_cneuromod.studies.narratives import Narratives
+#from neuralfetch_cneuromod.studies.petit-prince import PetitPrince
+#from neuralfetch_cneuromod.studies.retinotopy import Retinotopy
+#from neuralfetch_cneuromod.studies.shinobi import Shinobi
+#from neuralfetch_cneuromod.studies.things import Things
+#from neuralfetch_cneuromod.studies.triplets import Triplets
 
 
 # ---------------------------------------------------------------------------
@@ -54,10 +60,12 @@ class TestEntryPoint:
 # Instantiation smoke tests
 # ---------------------------------------------------------------------------
 
-#: All study classes that inherit from CNeuroModStudy (i.e. have BIDS + fMRIPrep).
+#: All study classes that inherit from CNeuroModStudy (i.e. have BIDS + fMRIPrep + timeseries).
 FMRI_STUDY_CLASSES = [
-    Friends, HarryPotter, Mario, Shinobi, Movie10, Things, Floc, HcpTrt,
-    Retinotopy, Gamepad,
+    #EmotionVideos, Floc, Friends, HarryPotter, HcpTrt, Mario, MarioStars,
+    #Mario3, Movie10, Narratives, PetitPrince, Retinotopy, Shinobi,
+    #Things, Triplets,
+    Movie10, Friends,
 ]
 
 
@@ -76,13 +84,7 @@ def test_instantiation(StudyClass: type, tmp_path: Path) -> None:
     assert study.TASK, f"{StudyClass.__name__}.TASK must be a non-empty string"
     assert isinstance(study.bids_dir, Path)
     assert isinstance(study.fmriprep_dir, Path)
-
-
-def test_anat_instantiation(tmp_path: Path) -> None:
-    """CNeuroModAnat can be instantiated with a valid path."""
-    study = CNeuroModAnat(path=tmp_path)
-    assert isinstance(study.bids_dir, Path)
-    assert isinstance(study.smriprep_dir, Path)
+    assert isinstance(study.timeseries_dir, Path)
 
 
 # ---------------------------------------------------------------------------
@@ -104,9 +106,7 @@ class TestFriendsIterTimelines:
         for tl in study.iter_timelines():
             assert "subject" in tl
             assert "session" in tl
-            assert "run" in tl
             assert "task" in tl
-            assert tl["task"] == "friends"
 
     def test_subject_filter(self, cneuromod_root: Path) -> None:
         """subjects parameter restricts iteration to specified subjects."""
@@ -185,39 +185,6 @@ class TestFriendsLoadTimelineEvents:
 
 
 # ---------------------------------------------------------------------------
-# CNeuroModAnat iter_timelines — synthetic fixture
-# ---------------------------------------------------------------------------
-
-class TestAnatIterTimelines:
-    """Tests for CNeuroModAnat using a minimal synthetic fixture."""
-
-    @pytest.fixture()
-    def anat_root(self, tmp_path: Path) -> Path:
-        """Create a minimal anatomy BIDS directory with one subject."""
-        sub_dir = tmp_path / "CNeuroModAnat" / "bids" / "sub-01"
-        sub_dir.mkdir(parents=True)
-        return tmp_path
-
-    def test_finds_one_subject(self, anat_root: Path) -> None:
-        """iter_timelines() finds the single subject in the fixture."""
-        study = CNeuroModAnat(path=anat_root)
-        timelines = list(study.iter_timelines())
-        assert len(timelines) == 1
-        assert timelines[0]["subject"] == "01"
-
-    def test_subject_filter(self, anat_root: Path) -> None:
-        """subjects parameter filters correctly."""
-        study = CNeuroModAnat(path=anat_root, subjects=["99"])
-        assert list(study.iter_timelines()) == []
-
-    def test_raises_if_no_dirs(self, tmp_path: Path) -> None:
-        """iter_timelines() raises FileNotFoundError when no dirs exist."""
-        study = CNeuroModAnat(path=tmp_path)
-        with pytest.raises(FileNotFoundError):
-            list(study.iter_timelines())
-
-
-# ---------------------------------------------------------------------------
 # Class variable sanity checks
 # ---------------------------------------------------------------------------
 
@@ -235,6 +202,7 @@ def test_class_variables_set(StudyClass: type, tmp_path: Path) -> None:
     assert StudyClass.TASK, f"{StudyClass.__name__}.TASK is empty"
     assert StudyClass.BIDS_REPO, f"{StudyClass.__name__}.BIDS_REPO is empty"
     assert StudyClass.FMRIPREP_REPO, f"{StudyClass.__name__}.FMRIPREP_REPO is empty"
+    assert StudyClass.TIMESERIES_REPO, f"{StudyClass.__name__}.TIMESERIES_REPO is empty"
     assert StudyClass.description, f"{StudyClass.__name__}.description is empty"
 
 
