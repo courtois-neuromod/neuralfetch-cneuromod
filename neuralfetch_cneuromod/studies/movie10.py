@@ -10,7 +10,7 @@ Each movie was split into multiple BOLD runs of ~10-minute each.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/en/latest/DATASETS.html#movie10
+* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/movie10.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/movie10
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/movie10.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/movie10.timeseries
@@ -56,7 +56,7 @@ class Movie10(CNeuroModMovieStudy):
     datalad_jobs:
         Parallel DataLad download jobs.
 
-    Examples
+    Example
     --------
     >>> study = Movie10(path="path/to/cneuromod.all")
     >>> events = study.run()
@@ -91,7 +91,7 @@ class Movie10(CNeuroModMovieStudy):
         Returns
         -------
         list[str]
-            Glob patterns relative to the movie repository root, ready to
+            Glob patterns relative to the main repository root, ready to
             be passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
@@ -121,8 +121,8 @@ class Movie10(CNeuroModMovieStudy):
         for mvie in self.MOVIES:
             patterns.extend([
                 # Movie dialogues transcribed with AssemblyAI speech-to-text
-                f"{self.path}/annotations/transcripts/{mvie}/"
-                f"movie10_{mvie}*_model-AA_transcript.json",
+                f"{self.path}/annotations/annotations/transcripts/"
+                f"{mvie}/movie10_{mvie}*_model-AA_transcript.json",
             ])
         return patterns
 
@@ -130,7 +130,7 @@ class Movie10(CNeuroModMovieStudy):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_movie_path(self, timeline: dict[str, tp.Any]) -> Path:
+    def _get_stimulus_path(self, timeline: dict[str, tp.Any]) -> Path:
         """
         Return the full path of the segmented movie file (.mkv) shown during a 
         given run ('timeline').

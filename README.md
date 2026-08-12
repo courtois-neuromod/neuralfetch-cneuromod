@@ -16,11 +16,12 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 | `Gamepad` | Gamepad motor task | Motor |
 | `HarryPotter` | Harry Potter book chapter | Written narrative |
 | `HcpTrt` | HCP-style test-retest | Multimodal |
-| `PetitPrince` | Le Petit Prince audiobook | Auditory narrative |
 | `Mario` | Super Mario Bros gameplay | Video game |
 | `MarioStars` | Super Mario All-stars gameplay | Video game |
 | `Movie10` | 3 Hollywood movies and 1 BBC documentary | Audio-visual movie |
 | `Narratives` | Stories from Nastase stimulus set | Auditory narrative and free recall |
+| `OOD` | OOD movie stimuli | Audio-visual movie |
+| `PetitPrince` | Le Petit Prince audiobook | Auditory narrative |
 | `Retinotopy` | HCP retinotopy stimuli | Visual retinotopy |
 | `Shinobi` | Shinobi video game | Video game |
 | `Things` | THINGS object image set | Visual object recognition |

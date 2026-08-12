@@ -15,24 +15,26 @@ administered across multiple sessions for each subject.
 
 References
 ----------
+* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/petit-prince.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/petit-prince
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/petit-prince.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/petit-prince.timeseries
-* TODO DataLad stimuli repo: https://github.com/courtois-neuromod/petit-prince.stimuli
+* DataLad stimuli repo: https://github.com/courtois-neuromod/petit-prince.stimuli
 * DataLad transcripts repo: https://github.com/courtois-neuromod/petit-prince.annotations
 """
 
 from __future__ import annotations
 
+import json
 import typing as tp
+from pathlib import Path
 
 import pandas as pd
 
-from neuralfetch_cneuromod.base import CNeuroModStudy
-#from neuralfetch_cneuromod._utils import events_path, load_events_tsv
+from neuralfetch_cneuromod.base import CNeuroModAudioStudy
 
 
-class PetitPrince(CNeuroModStudy):
+class PetitPrince(CNeuroModAudioStudy):
     """Courtois NeuroMod — *Petit Prince* audiobook listening dataset (EN and FR).
 
     Five subjects listened to an audiobook verion of Le Petit Prince (1943) in French and 
@@ -41,84 +43,236 @@ class PetitPrince(CNeuroModStudy):
     Parameters
     ----------
     path:
-        Root data directory.  Resolves ``{path}/petit-prince/bids`` and
-        ``{path}/petit-rince/fmriprep``.
+        Root data directory.  Resolves ``{path}/petit-prince/bids``,
+        ``{path}/petit-prince/fmriprep`` or ``{path}/petit-prince/timeseries``,
+        ``{path}/petit-prince/stimuli`` and ``{path}/petit-prince/annotations``.
     space:
         fMRIPrep output space (default ``"MNI152NLin2009cAsym"``).
-    resolution:
-        MNI resolution label (default ``"2"``).
+    timeseries:
+        Define to model pre-extracted, masked, denoised and normalized timeseries, 
+        rather than the fMRIPrep BOLD derivatives. Select among ``"cneuromod2026"``, 
+        ``"schaefer1000"`` (algonauts 2025 competition), ``"voxel_mni"`` or ``"voxel_native"``.
+        (default ``None``) .
     subjects:
-        Restrict to a subset of subjects.
+        Restrict data loading to a subset of subject labels
+        (without ``sub-`` prefix).  ``None`` includes all available subjects.
     datalad_jobs:
         Parallel DataLad download jobs.
 
-    Notes
-    -----
-    The BIDS events TSV contains word-level onsets derived from forced
-    alignment of the audiobook text with the audio stimulus.
-
     Examples
     --------
-    >>> study = HarryPotter(path="/data/cneuromod")
+    >>> study = PetitPrince(path="/data/to/cneuromod.all")
     >>> events = study.run()
     """
 
-    TASK: tp.ClassVar[str] = "harrypotter"
-    BIDS_REPO: tp.ClassVar[str] = "harrypotter"
-    FMRIPREP_REPO: tp.ClassVar[str] = "harrypotter.fmriprep"
+    TASK: tp.ClassVar[str] = "petit-prince"
+    BIDS_REPO: tp.ClassVar[str] = "petit-prince"
+    FMRIPREP_REPO: tp.ClassVar[str] = "petit-prince.fmriprep"
+    LANGUAGES: list[str] = ["EN", "FR"]
 
-    dataset_name: tp.ClassVar[str] = "CNeuroMod HarryPotter"
+    dataset_name: tp.ClassVar[str] = "CNeuroMod Le Petit Prince"
     description: tp.ClassVar[str] = (
-        "Six subjects listening to the Harry Potter audiobook (chapters 1-9) "
-        "during 3T fMRI."
+        "Five subjects listening to Le Petit Prince (1943) audiobook "
+        "in English and French during 3T fMRI."
     )
     bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
 
+    # -----------------------------------------------------------------
+    # Download pattern builders
+    # -----------------------------------------------------------------
+
+    def _stimuli_download_patterns(self) -> list[str]:
+        """Build stimuli glob patterns for audio files (.wav).
+
+        Audio files are downloaded from their source OpenNeuro dset
+        repository installed as a submodule. Only French (FR) and
+        English (EN) audiobooks are targeted:
+
+        * e.g., ``task-lppEN_section-1.wav``
+
+        Returns
+        -------
+        list[str]
+            Glob patterns relative to the main repository root, ready to
+            be passed as ``datalad get`` arguments. Patterns are python glob
+            compatible.
+        """
+        patterns = []
+        for lang in self.LANGUAGES:
+            patterns.extend([
+                f"{self.path}/stimuli/OpenNeuroDatasets/ds003643/"
+                f"stimuli/task-lpp{lang}_section*.wav",
+            ])
+        return patterns
+
+
+    def _annotations_download_patterns(self) -> list[str]:
+        """Build annotation glob patterns for audio transcripts (.json).
+
+        Transcripts for audiobook segmented into individual runs are
+        targeted in English and French:
+
+        * e.g., ``movie10_bourne01_model-AA_transcript.json``
+
+        Returns
+        -------
+        list[str]
+            Glob patterns relative to the annotation repository root, ready to
+            be passed as ``datalad get`` arguments. Patterns are python glob
+            compatible.
+        """
+        patterns = []
+        for lang in self.LANGUAGES:
+          patterns.extend([
+                # Audiobook transcribed with AssemblyAI speech-to-text
+                f"{self.path}/annotations/annotations/transcripts/{lang}/"
+                f"task-lpp{lang}_section-*_model-AA_transcript.json",
+            ])
+        return patterns
+
+    # -----------------------------------------------------------------
+    # Event loading
+    # -----------------------------------------------------------------
+
+    def _get_stimulus_path(self):
+        """
+        Return the full path of the audiobook segment file (.wav) presented
+        during a given run ('timeline').
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        Path
+            The path to the audiobook segment file presented during a given run.
+
+        Raises
+        ------
+        FileNotFoundError
+            If the .wav file does not exist (DataLad content not fetched).
+        """
+        if self.timeseries:
+            _, task, run, _ = timeline['run'].split("_")
+            lang = task[-2:]
+        else:
+            task = f"task-{timeline['task']}"
+            run = timeline['run']
+            lang = task[-2:]
+        if lang == "EN":
+            seg_name = f"{task}_section-{run[-1]}"
+        else:
+            seg_name = f"{task}_section_{run[-1]}"
+
+        ap = Path(
+            f"{self._stimuli_dir}/OpenNeuroDatasets/ds003643/"
+            f"stimuli/{seg_name}.wav",
+        )
+        if not ap.exists():
+            raise FileNotFoundError(
+                f"Audio file not found: {ap}\n"
+                "Run study.download() or datalad get to fetch the content."
+            )
+        return ap
+
+
+    def _load_transcript(self):
+        """
+        Load the speech-to-text transcript of the audiobook segment
+        presented during a given run ('timeline').
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        dict
+            The transcript for the audiobook segment presented during a given run.
+        str
+            The language of the transcript ("en" or "fr")
+        """
+        if self.timeseries:
+            _, task, run, _ = timeline['run'].split("_")
+            seg_name = f"{task}_section-{run[-1]}"
+            lang = task[-2:]
+        else:
+            seg_name = f"task-{timeline['task']}_section-{timeline['run']}"
+            lang = timeline['task'][-2:]
+        tp = Path(
+            f"{self._annotations_dir}/annotations/transcripts/"
+            f"{lang}/{seg_name}_model-AA_transcript.json",            
+        )
+        if not tp.exists():
+            return {
+                "transcript": "",
+                "words": [],
+            }, lang.lower()
+
+        with open(tp, "r") as file:
+            transcript = json.load(file)
+
+        return transcript, lang.lower()
+
+
     def _load_stimulus_events(
-        self, timeline: dict[str, tp.Any]
+        self, timeline: dict[str, tp.Any], event_root: str,
     ) -> pd.DataFrame:
-        """Load Harry Potter word-level events with audio file paths.
+        """Load audio stimulus events. Loads run-wise Audio event with
+        audio file paths. Also extracts Word events from audio transcript.
+
+        Duration and frequency are auto-detected from audio file if not provided.
 
         Parameters
         ----------
         timeline:
             Timeline dict with ``subject``, ``session``, ``run``, ``task``.
+        event_root:
+            Unique event file identifier.
 
         Returns
         -------
         pd.DataFrame
-            Events table with ``type``, ``start``, ``duration``, and
-            optionally ``word``, ``filepath`` columns.
+            Table with Audio event (run-wise) and Word events from speech2text
+            audio transcript.
         """
-        if not self._bids_dir.exists():
-            return pd.DataFrame()
+        audio_path = self._get_stimulus_path(timeline)
+        audio_event: dict[str, tp.Any] = {
+            "type": "Audio",
+            "start": 0.0,
+            "filepath": audio_path,
+        }
+        stimuli_events = [audio_event]
 
-        sub = timeline["subject"]
-        ses = timeline.get("session")
-        run = timeline.get("run")
-        task = timeline.get("task", self.TASK)
-
-        ep = events_path(self._bids_dir, sub, task, session=ses, run=run)
-        if not ep.exists():
-            return pd.DataFrame()
-
-        bids_events = load_events_tsv(ep)
-        stimuli_dir = self._bids_dir / "stimuli"
-
-        rows = []
-        for _, row in bids_events.iterrows():
-            event: dict[str, tp.Any] = {
-                "type": "Text",
-                "start": float(row["onset"]),
-                "duration": float(row["duration"]),
-                "language": "english",
-                "modality": "read"
+        transcript, lang = self._load_transcript(timeline)
+        for word in transcript["words"]:
+            word_event : dict[str, tp.Any] = {
+                "type": "Word",
+                "text": word["word"],
+                "start": word["start"],
+                "stop": word["end"],
+                "duration": word["end"] - word["start"],
+                "language": lang,
+                "modality": "heard",
             }
-            # Word text annotation
-            for col in ("word", "trial_type"):
-                if col in bids_events.columns:
-                    event["text"] = str(row[col])
-                    break
-            rows.append(event)
+            stimuli_events.append(word_event)
+        if len(transcript["transcript"]):
+            text_start = transcript["words"][0]["start"]
+            text_stop = transcript["words"][-1]["end"]
+            text_event : dict[str, tp.Any] = {
+                "type": "Text",
+                "text": transcript["transcript"],
+                "start": text_start,
+                "stop": text_stop,
+                "duration": text_stop - text_start,
+                "language": lang,
+                "modality": "heard",
+            }
+            stimuli_events.append(text_event)
 
-        return pd.DataFrame(rows) if rows else pd.DataFrame()
+        return pd.DataFrame(stimuli_events)

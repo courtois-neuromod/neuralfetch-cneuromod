@@ -11,7 +11,7 @@ repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/en/latest/DATASETS.html#friends
+* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/friends.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/friends
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/friends.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/friends.timeseries
@@ -98,7 +98,7 @@ class Friends(CNeuroModMovieStudy):
         Returns
         -------
         list[str]
-            Glob patterns relative to the stimuli repository root, ready to
+            Glob patterns relative to the main repository root, ready to
             be passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
@@ -129,7 +129,7 @@ class Friends(CNeuroModMovieStudy):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_movie_path(self, timeline: dict[str, tp.Any]) -> Path:
+    def _get_stimulus_path(self, timeline: dict[str, tp.Any]) -> Path:
         """
         Return the full path of the segmented movie file (.mkv) shown during a 
         given run ('timeline').

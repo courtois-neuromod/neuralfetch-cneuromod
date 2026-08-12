@@ -1,14 +1,10 @@
 """Super Mario Bros videogame playing fMRI dataset.
 
-Five subjects (sub-01, sub-02, sub-03, sub-05, sub-06) played Super Mario Bros (NES) 
+Five subjects (sub-01, sub-02, sub-03, sub-05, sub-06) played Super Mario All-Stars (NES)
 while undergoing 3T fMRI. Each session included several runs featuring a mixture of
 game levels. 
 
-Sessions were split into two phases. During the discovery phase, participants played each 
-game level in order. Each level had to be cleared at least once before the participant could
-play the next level, until they finished the entire game.
-
-During the stable phase, levels were mixed pseudo-randomly within and across runs.
+Levels were mixed pseudo-randomly within and across runs throughout the different sessions.
 Participants were given up to three attempts ("lives") to successfully clear a given level.
 
 Stimuli are game frame video files (a.k.a. game replays); gamepad input logs are provided in
@@ -17,10 +13,10 @@ the raw BIDS repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/mario.html
-* DataLad BIDS repo: https://github.com/courtois-neuromod/mario
-* DataLad fMRIPrep repo: https://github.com/courtois-neuromod/mario.fmriprep
-* DataLad timeseries repo: https://github.com/courtois-neuromod/mario.timeseries
+* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/mariostars.html
+* DataLad BIDS repo: https://github.com/courtois-neuromod/mariostars
+* DataLad fMRIPrep repo: https://github.com/courtois-neuromod/mariostars.fmriprep
+* DataLad timeseries repo: https://github.com/courtois-neuromod/mariostars.timeseries
 """
 
 from __future__ import annotations
@@ -33,17 +29,17 @@ import pandas as pd
 from neuralfetch_cneuromod.base import CNeuroModVideoGameStudy
 
 
-class Mario(CNeuroModVideoGameStudy):
-    """Courtois NeuroMod — *Super Mario Bros* videogaming fMRI dataset.
+class MarioStars(CNeuroModVideoGameStudy):
+    """Courtois NeuroMod — *Super Mario All-Stars* videogaming fMRI dataset.
 
-    Five subjects (sub-01, sub-02, sub-03, sub-05, sub-06) played Super Mario Bros (NES)
+    Five subjects (sub-01, sub-02, sub-03, sub-05, sub-06) played Super Mario All-Stars (NES)
     while undergoing 3T fMRI. Each BOLD run corresponds to multiple naturalistic gameplays.
 
     Parameters
     ----------
     path:
-        Root data directory.  Resolves ``{path}/mario/bids`` and
-        ``{path}/mario/fmriprep``  or ``{path}/mario/timeseries``.
+        Root data directory.  Resolves ``{path}/mariostars/bids`` and
+        ``{path}/mariostars/fmriprep``  or ``{path}/mariostars/timeseries``.
     space:
         fMRIPrep output space (default ``"MNI152NLin2009cAsym"``).
     timeseries:
@@ -67,18 +63,18 @@ class Mario(CNeuroModVideoGameStudy):
 
     Example
     --------
-    >>> study = Mario(path="path/to/cneuromod.all")
+    >>> study = MarioStars(path="path/to/cneuromod.all")
     >>> events = study.run()
     """
 
-    TASK: tp.ClassVar[str] = "mario"
-    BIDS_REPO: tp.ClassVar[str] = "mario"
-    FMRIPREP_REPO: tp.ClassVar[str] = "mario.fmriprep"
-    TIMESERIES_REPO: tp.ClassVar[str] = "mario.timeseries"
+    TASK: tp.ClassVar[str] = "mariostars"
+    BIDS_REPO: tp.ClassVar[str] = "mariostars"
+    FMRIPREP_REPO: tp.ClassVar[str] = "mariostars.fmriprep"
+    TIMESERIES_REPO: tp.ClassVar[str] = "mariostars.timeseries"
 
-    dataset_name: tp.ClassVar[str] = "CNeuroMod Mario"
+    dataset_name: tp.ClassVar[str] = "CNeuroMod MarioStars"
     description: tp.ClassVar[str] = (
-        "Five subjects playing Super Mario Bros during 3T fMRI. "
+        "Five subjects playing Super Mario All-Stars during 3T fMRI. "
         "Includes frame-accurate game replays (.mp4)."
     )
     bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex

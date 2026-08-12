@@ -641,7 +641,7 @@ class CNeuroModStudy(_study.Study):
 
         ep_list = sorted(glob.glob(
             f"{self._bids_dir}/sub-{timeline['subject']}"
-            f"/*{timeline['session']}/{event_root}*events.tsv"
+            f"/*{timeline['session']}/func/{event_root}*events.tsv"
         ))
         if len(ep_list) != 1:
             self.logger.debug("No unique events file found: %s", ep_list[0])
@@ -769,13 +769,14 @@ class CNeuroModStudy(_study.Study):
         return pd.concat(all_rows, ignore_index=True)
 
 
-class CNeuroModMovieStudy(CNeuroModStudy):
-    """Abstract base class for all Courtois NeuroMod movie-watching study
-    fetchers, including Friends, Movie10 and OOD.
+class CNeuroModAudioStudy(CNeuroModStudy):
+    """Abstract base class for all Courtois NeuroMod movie-watching and 
+    audio-listening study fetchers, including Petit Prince, Narratives,
+    Friends, Movie10 and OOD.
 
-    Subclasses must set the :attr:`TASK` class variable and may override
-    :meth:`_load_stimulus_events`, :meth:`_extract_stimulus_event` and 
-    :meth:`iter_timelines`.
+    Subclasses must set the :attr:`TASK` class variable and must override
+    :meth:`_get_stimulus_path`, :meth:`_load_transcript`, :meth:`_stimuli_download_patterns`,
+    :meth:`_annotations_download_patterns` and :meth:`_load_stimulus_events`.
 
     Expected layout::
 
@@ -784,7 +785,7 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         │   ├── bids/             ← raw BIDS dataset (DataLad repo)
         │   ├── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
         │   ├── timeseries/       ← masked and denoised BOLD timeseries (DataLad repo)
-        │   ├── stimuli/          ← Movie files (.mkv) shown to participants
+        │   ├── stimuli/          ← Movie/audio files (.mkv/.wav) presented to participants
         │   └── annotations/      ← Movie annotations, including transcripts
 
     Class Variables
@@ -828,7 +829,7 @@ class CNeuroModMovieStudy(CNeuroModStudy):
     @property
     def stimuli_dir(self) -> Path:
         """Path to the stimulus DataLad repository with 
-        audio-visual files in .mkv or .mp3 format.
+        audio-visual files in .mkv, .wav or .mp3 format.
 
         Returns
         -------
@@ -840,7 +841,7 @@ class CNeuroModMovieStudy(CNeuroModStudy):
     @property
     def annotations_dir(self) -> Path:
         """Path to the annotations DataLad repository with 
-        time-stamped movie scripts (dialogue).
+        time-stamped audio / movie transcripts (narration or dialogue).
 
         Returns
         -------
@@ -874,7 +875,8 @@ class CNeuroModMovieStudy(CNeuroModStudy):
     # -----------------------------------------------------------------
 
     def _stimuli_download_patterns(self) -> list[str]:
-        """Build stimuli glob patterns for movie files (.mkv).
+        """Build stimuli glob patterns for audio (.wav) or movie (.mkv)
+        files.
 
         Must override in concrete subclasses
 
@@ -888,7 +890,7 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         return []
 
     def _annotations_download_patterns(self) -> list[str]:
-        """Build annotation glob patterns for movie transcripts (.json).
+        """Build annotation glob patterns for audio / movie transcripts (.json).
 
         Must override in concrete subclasses
 
@@ -912,8 +914,8 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         Pulls files selectively by passing BIDS glob patterns to ``datalad get``.
 
         Pulled files include:
-        * **stimuli** — cloned; only ``*.mkv`` matching individual runs 
-        are fetched.  
+        * **stimuli** — cloned; only ``*.mkv`` or ``*.wav`` matching individual
+        runs are fetched.  
         * **annotations** — cloned; only ``*.json`` matching individual runs 
         are fetched.  
 
@@ -935,35 +937,14 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         )
         _utils.datalad_get_list(transcript_patterns, f"{self.path}/annotations")
 
-
     # -----------------------------------------------------------------
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_movie_path(self, timeline: dict[str, tp.Any]) -> Path:
-        """
-        Return the full path of the segmented movie file (.mkv) shown during a 
-        given run ('timeline').
-
-        Must override in concrete subclasses
-
-        Parameters
-        ----------
-        timeline:
-            Timeline dictionary with keys ``subject``, ``session``, ``run``,
-            ``task``.
-
-        Returns
-        -------
-        Path
-            The path to the segmented movie file shown during a given run.
-        """
-        return Path(".")
-
     def _load_transcript(self, timeline: dict[str, tp.Any]) -> dict:
         """
-        Load the speech-to-text transcript of the segmented movie 
-        shown during a given run ('timeline').
+        Load the speech-to-text transcript of the audio / movie
+        presented during a given run ('timeline').
 
         Must override in concrete subclasses
 
@@ -976,12 +957,88 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         Returns
         -------
         dict
-            The transcript for the segmented movie shown during a given run.
+            The transcript for the audio / movie presented during a given run.
         """
         return {
             "transcript": "",
             "words": [],
         }
+
+    def _get_stimulus_path(self, timeline: dict[str, tp.Any]) -> Path:
+        """
+        Return the full path of the segmented audio (.wav) or movie (.mkv) file
+        presented during a given run ('timeline').
+
+        Must override in concrete subclasses
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+
+        Returns
+        -------
+        Path
+            The path to the segmented movie / audio file presented during a given run.
+        """
+        return Path(".")
+
+
+    def _load_stimulus_events(
+        self, timeline: dict[str, tp.Any], event_root: str,
+    ) -> pd.DataFrame:
+        """Load movie/audio stimulus events and corresponding transcripts.
+        
+        Must override in concrete subclasses
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dict with ``subject``, ``session``, ``run``, ``task``.
+        event_root:
+            Unique event file identifier.
+
+        Returns
+        -------
+        pd.DataFrame
+            Table with Audio / Movie event (run-wise) and Word events from
+            audio / movie transcript.
+        """
+        return pd.DataFrame()
+
+
+class CNeuroModMovieStudy(CNeuroModAudioStudy):
+    """Abstract base class for all Courtois NeuroMod movie-watching study
+    fetchers, including Friends, Movie10 and OOD.
+
+    Subclasses must set the :attr:`TASK` class variable and must override
+    :meth:`_get_stimulus_path`, :meth:`_load_transcript`, :meth:`_stimuli_download_patterns`
+    and :meth:`_annotations_download_patterns`.
+
+    Expected layout::
+
+        path/cneuromod.all        ← pre-installed parent repository
+        ├── {StudyName}/          ← auto-resolved subfolder
+        │   ├── bids/             ← raw BIDS dataset (DataLad repo)
+        │   ├── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
+        │   ├── timeseries/       ← masked and denoised BOLD timeseries (DataLad repo)
+        │   ├── stimuli/          ← Movie files (.mkv) shown to participants
+        │   └── annotations/      ← Movie annotations, including transcripts
+
+    Class Variables
+    ---------------
+    STIMULI_REPO : str
+        Name of the stimuli GitHub repository under the ``courtois-neuromod``
+        organisation. Defaults to ``"{BIDS_REPO}.stimuli"`.
+    TRANSCRIPTS_REPO : str
+        Name of the stimulus annotations GitHub repository.
+        Defaults to ``"{BIDS_REPO}.annotations"``.
+    """
+
+    # -----------------------------------------------------------------
+    # Event loading
+    # -----------------------------------------------------------------
 
     def _load_stimulus_events(
         self, timeline: dict[str, tp.Any], event_root: str,
@@ -1001,9 +1058,10 @@ class CNeuroModMovieStudy(CNeuroModStudy):
         Returns
         -------
         pd.DataFrame
-            Table with Movie event (run-wise) and Word events from movie transcript.
+            Table with Movie event (run-wise) and Word events from speech2text
+            movie transcript.
         """
-        movie_path = self._get_movie_path(timeline)
+        movie_path = self._get_stimulus_path(timeline)
         movie_event: dict[str, tp.Any] = {
             "type": "Video",
             "start": 0.0,
@@ -1038,3 +1096,155 @@ class CNeuroModMovieStudy(CNeuroModStudy):
             stimuli_events.append(text_event)
 
         return pd.DataFrame(stimuli_events)
+
+
+class CNeuroModVideoGameStudy(CNeuroModStudy):
+    """Abstract base class for all Courtois NeuroMod videogame-playing study
+    fetchers, including Shinobi, Mario, MarioStars and Mario3.
+
+    Subclasses must set the :attr:`TASK` class variable and may need to override
+    :meth:`_get_replay_events` and :meth:`_replays_download_patterns`.
+
+    Expected layout::
+
+        path/cneuromod.all        ← pre-installed parent repository
+        ├── {StudyName}/          ← auto-resolved subfolder
+        │   ├── bids/             ← raw BIDS dataset (DataLad repo)
+        │   ├── fmriprep/         ← fMRIPrep derivatives (DataLad repo)
+        │   └── timeseries/       ← masked and denoised BOLD timeseries (DataLad repo)
+
+    Note
+    -----
+    Game data (stored as .bk2) and replays (.mp4) are stored in the bids repository.
+    """
+
+    # -----------------------------------------------------------------
+    # Download pattern builders
+    # -----------------------------------------------------------------
+
+    def _replays_download_patterns(self) -> list[str]:
+        """Build glob patterns for game replay files (.mp4).
+
+        Targets multiple game replays per run. Each replay includes up
+        to three attempts ("lives") to clear a game level.
+
+        Returns
+        -------
+        list[str]
+            Glob patterns relative to the main repository root, ready to be
+            passed as ``datalad get`` arguments. Patterns are python glob
+            compatible.
+        """
+        patterns = []
+        for sub in self._subject_globs():
+            patterns.extend([
+                # Game replays (.mp4) for this videogaming task
+                f"{self.path}/bids/{sub}/ses-*/gamelogs/{sub}_ses-*_task-*_recording.mp4",
+            ])
+        return patterns
+
+    # -----------------------------------------------------------------
+    # Download
+    # -----------------------------------------------------------------
+
+    def _download(self) -> None:
+        """Selectively fetch replay files from bids DataLad repository.
+
+        Pulls files selectively by passing BIDS glob patterns to ``datalad get``.
+
+        Pulled files include:
+        * **replays** — cloned; only ``*.mp4`` matching multiple game replays
+        per run are fetched.  
+
+        The patterns are built by :meth:`_replays_download_patterns` from the 
+        current field values.
+        """
+        super()._download()
+
+        replay_patterns = self._replays_download_patterns()
+        self.logger.info(
+            "[%s] replay patterns: %s", replay_patterns
+        )
+        _utils.datalad_get_list(replay_patterns, f"{self.path}/bids")
+
+
+    # -----------------------------------------------------------------
+    # Event loading
+    # -----------------------------------------------------------------
+
+    def _get_replay_events(
+        self, timeline: dict[str, tp.Any], events_path: str,
+    ) -> list[dict[str, tp.Any]]:
+        """
+        Return a list of dict with info for every level played 
+        during a given run ('timeline'). Info includes the level,
+        repetition number, onset (relative to run/timeline onset)
+        and game replay file path (.mp4).
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dictionary with keys ``subject``, ``session``, ``run``,
+            ``task``.
+        events_path:
+            Path to run's *events.tsv file, which includes game play levels, 
+            repetition, onset and duration.
+
+        Returns
+        -------
+        Path
+            List of dict with replay file paths and info (onset, level, rep num)
+            for every level played during a given run.
+        """
+        df = pd.read_csv(events_path, sep="\t")
+        game_events = df[df["trial_type"]=="gym-retro_game"]
+        replay_path = Path(events_path.replace("/func", "/gamelogs")).parent
+
+        r_list = [{
+            "type": "Video",
+            "start": row.onset,
+            "filepath": replay_path / f"{Path(row.stim_file).name.replace(
+                '.bk2', '_recording.mp4')}",
+            "level": row.level,
+            "attempt": row.stim_file.split("rep-")[-1].split(".")[0],
+        } for i, row in enumerate(game_events.itertuples())]
+        
+        return [d for d in r_list if d['filepath'].exists()]
+
+
+    def _load_stimulus_events(
+        self, timeline: dict[str, tp.Any], event_root: str,
+    ) -> pd.DataFrame:
+        """Load game replay events. Loads run-wise replay events with their
+        full file paths.
+
+        Detects FPS (as frequency) and duration from .mp4 file.
+
+        Parameters
+        ----------
+        timeline:
+            Timeline dict with ``subject``, ``session``, ``run``, ``task``.
+        event_root:
+            Unique event file identifier.
+
+        Returns
+        -------
+        pd.DataFrame
+            Table with replay events for a given run.
+        """
+        if not self._bids_dir.exists():
+            return pd.DataFrame()
+
+        # run num: fmriprep -> bids for mario, mario3, mariostars and shinobi
+        e_root = event_root.replace("run-", "run-0")   
+        ep_list = [x for x in sorted(glob.glob(
+            f"{self._bids_dir}/sub-{timeline['subject']}"
+            f"/*{timeline['session']}/func/{e_root}*events.tsv"
+        )) if not 'desc' in x]
+        if len(ep_list) != 1:
+            self.logger.debug("No unique events file found: %s", ep_list[0])
+            return pd.DataFrame()
+
+        replay_events = self._get_replay_events(timeline, ep_list[0])
+
+        return pd.DataFrame(replay_events)

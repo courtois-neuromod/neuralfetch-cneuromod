@@ -11,7 +11,7 @@ the raw BIDS repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/en/latest/DATASETS.html#harrypotter
+* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/harrypotter.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/harrypotter
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/harrypotter.fmriprep
 """
