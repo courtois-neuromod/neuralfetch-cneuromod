@@ -24,8 +24,6 @@ import json
 import typing as tp
 from pathlib import Path
 
-import pandas as pd
-
 from neuralfetch_cneuromod.base import CNeuroModMovieStudy
 
 

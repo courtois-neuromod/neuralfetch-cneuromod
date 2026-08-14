@@ -68,6 +68,9 @@ class PetitPrince(CNeuroModAudioStudy):
     TASK: tp.ClassVar[str] = "petit-prince"
     BIDS_REPO: tp.ClassVar[str] = "petit-prince"
     FMRIPREP_REPO: tp.ClassVar[str] = "petit-prince.fmriprep"
+    TIMESERIES_REPO: tp.ClassVar[str] = "petit-prince.timeseries"
+    STIMULI_REPO: tp.ClassVar[str] = "petit-prince.stimuli"
+    TRANSCRIPTS_REPO: tp.ClassVar[str] = "petit-prince.annotations"
     LANGUAGES: list[str] = ["EN", "FR"]
 
     dataset_name: tp.ClassVar[str] = "CNeuroMod Le Petit Prince"

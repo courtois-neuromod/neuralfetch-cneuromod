@@ -368,9 +368,6 @@ class CNeuroModStudy(_study.Study):
 
         * ``*_events.tsv`` — trial onset / duration / type annotations
 
-        Stimuli (video, audio, image files) are intentionally excluded because
-        they can be very large and are not required for fMRI modelling.
-
         Returns
         -------
         list[str]
@@ -660,7 +657,7 @@ class CNeuroModStudy(_study.Study):
     def _extract_stimulus_event(
         self,
         row: pd.Series,
-    ) -> dict[str, tp.Any]:
+    ) -> dict[str, tp.Any] | None:
         """Implement file processing logic in subclasses.
         
         The returned ``event`` dict must at least contain ``type``, ``start``,
