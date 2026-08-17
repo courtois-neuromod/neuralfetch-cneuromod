@@ -23,7 +23,7 @@ import pytest
 #from neuralfetch_cneuromod.studies.floc import Floc
 from neuralfetch_cneuromod.studies.friends import Friends
 #from neuralfetch_cneuromod.studies.gamepad import Gamepad
-#from neuralfetch_cneuromod.studies.harrypotter import HarryPotter
+from neuralfetch_cneuromod.studies.harrypotter import HarryPotter
 #from neuralfetch_cneuromod.studies.hcptrt import HcpTrt
 from neuralfetch_cneuromod.studies.mario import Mario
 from neuralfetch_cneuromod.studies.mario3 import Mario3
