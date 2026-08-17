@@ -12,7 +12,7 @@ from neuralfetch_cneuromod.studies.mario import Mario  # noqa: F401
 from neuralfetch_cneuromod.studies.mario3 import Mario3  # noqa: F401
 from neuralfetch_cneuromod.studies.mariostars import MarioStars  # noqa: F401
 from neuralfetch_cneuromod.studies.movie10 import Movie10  # noqa: F401
-from neuralfetch_cneuromod.studies.petit-prince import PetitPrince  # noqa: F401
+from neuralfetch_cneuromod.studies.petitprince import PetitPrince  # noqa: F401
 from neuralfetch_cneuromod.studies.retinotopy import Retinotopy  # noqa: F401
 from neuralfetch_cneuromod.studies.shinobi import Shinobi  # noqa: F401
 from neuralfetch_cneuromod.studies.things import Things  # noqa: F401

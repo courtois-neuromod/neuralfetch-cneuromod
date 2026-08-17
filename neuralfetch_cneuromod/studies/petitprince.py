@@ -19,7 +19,7 @@ References
 * DataLad BIDS repo: https://github.com/courtois-neuromod/petit-prince
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/petit-prince.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/petit-prince.timeseries
-* DataLad stimuli repo: https://github.com/courtois-neuromod/petit-prince.stimuli
+* DataLad stimuli repo: https://github.com/courtois-neuromod/petitprince.stimuli
 * DataLad transcripts repo: https://github.com/courtois-neuromod/petit-prince.annotations
 """
 

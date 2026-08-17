@@ -31,7 +31,7 @@ from neuralfetch_cneuromod.studies.mariostars import MarioStars
 from neuralfetch_cneuromod.studies.movie10 import Movie10
 #from neuralfetch_cneuromod.studies.narratives import Narratives
 #from neuralfetch_cneuromod.studies.ood import OOD
-from neuralfetch_cneuromod.studies.petit-prince import PetitPrince
+from neuralfetch_cneuromod.studies.petitprince import PetitPrince
 #from neuralfetch_cneuromod.studies.retinotopy import Retinotopy
 from neuralfetch_cneuromod.studies.shinobi import Shinobi
 #from neuralfetch_cneuromod.studies.things import Things
