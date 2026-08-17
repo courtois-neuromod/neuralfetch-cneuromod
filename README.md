@@ -103,7 +103,7 @@ from neuralfetch_cneuromod.studies.friends import Friends
 # automatically. 
 
 study = Friends(path="path/to/cneuromod.all")
-print(study.study_summary())
+print(study.study_summary())  # TODO: manage error, missing file, run study.download()...
 
 # By default, the Study class tracks fMRI data pre-processed with fMRIprep.
 # Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
