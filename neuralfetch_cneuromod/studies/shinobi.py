@@ -21,7 +21,7 @@ import pandas as pd
 from neuralfetch_cneuromod.base import CNeuroModVideoGameStudy
 
 
-class Shinobi(CNeuroModStudy):
+class Shinobi(CNeuroModVideoGameStudy):
     """Courtois NeuroMod — *Shinobi* video game fMRI dataset.
 
     Four subjects (sub-01, sub-02, sub-04, sub-06) played Shinobi III: Return
@@ -70,4 +70,4 @@ class Shinobi(CNeuroModStudy):
         "Four subjects playing Shinobi III during 3T fMRI."
         "Includes frame-accurate game replays (.mp4)."
     )
-    bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
+    bibtex: tp.ClassVar[str] = CNeuroModVideoGameStudy.bibtex

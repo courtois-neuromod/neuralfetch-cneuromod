@@ -78,7 +78,7 @@ class PetitPrince(CNeuroModAudioStudy):
         "Five subjects listening to Le Petit Prince (1943) audiobook "
         "in English and French during 3T fMRI."
     )
-    bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
+    bibtex: tp.ClassVar[str] = CNeuroModAudioStudy.bibtex
 
     # -----------------------------------------------------------------
     # Download pattern builders

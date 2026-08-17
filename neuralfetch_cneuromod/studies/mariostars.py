@@ -74,4 +74,4 @@ class MarioStars(CNeuroModVideoGameStudy):
         "Five subjects playing Super Mario All-Stars during 3T fMRI. "
         "Includes frame-accurate game replays (.mp4)."
     )
-    bibtex: tp.ClassVar[str] = CNeuroModStudy.bibtex
+    bibtex: tp.ClassVar[str] = CNeuroModVideoGameStudy.bibtex
