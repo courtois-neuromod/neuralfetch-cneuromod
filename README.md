@@ -88,38 +88,57 @@ Use the Study classes to perform a selective download of the files you need for 
 
 ## Quick Start
 
+The study path can point to the cloned cneuromod.all repository (RECOMMENDED), or to a specific study subfolder (e.g., `path/to/cneuromod.all/friends`). 
+
+Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). If that folder is empty or non-existent, the study class will use DataLad to clone and pull from the proper set of repositories.
+
+In either scenario, the study class resolves its subfolder structure automatically. 
 
 ```python
 from neuralfetch_cneuromod.studies.friends import Friends
 
-# The study path can point to the cloned cneuromod.all repository (RECOMMENDED), 
-# or to a specific study subfolder (e.g., `path/to/cneuromod.all/friends`). 
-
-# Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). 
-# If that folder is empty or non-existent, the study class will
-# use DataLad to clone and pull from the proper set of repositories.
-
-# In either scenario, the study class resolves its subfolder structure 
-# automatically. 
-
 study = Friends(path="path/to/cneuromod.all")
+
+# Download study files (requires SSH key + access).
+# This step uses the `datalad get` command to download files selectively. 
+# Warning: download can be slow. Consider running inside a tmux session.
+study.download()
 print(study.study_summary())
 
-# By default, the Study class tracks fMRI data pre-processed with fMRIprep.
-# Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
-# e.g., study = Friends(path="path/to/cneuromod.all", timeseries='cneuromod2026')
-
 # Load all events as a neuralset-compatible DataFrame
-# This step uses the `datalad get` command to download files selectively. 
-# Warning: the first attempt is much slower than subsequent ones due to file downloads.
 events = study.run()
-
-# Optionally, you can pre-download data files as a separate step 
-# (requires SSH key + access) before `study.run()`
-# Consider running this step inside a tmux session.
-study.download()
 ```
 
+By default, the Study class tracks fMRI data pre-processed with fMRIprep. Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
+E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+study = Friends(path="path/to/cneuromod.all", timeseries='cneuromod2026')
+
+study.download()
+events = study.run()
+```
+
+To speed up future iterations, you can use caching to cache the study's events DataFrame and its timelines.
+
+E.g., 
+
+```python
+from pathlib import Path
+from neuralfetch_cneuromod.studies.friends import Friends
+CACHE = Path('/path/to/cache')
+
+study = Friends(
+    path="path/to/cneuromod.all",
+    timeseries='cneuromod2026',
+    infra={"folder": CACHE},
+)
+
+study.download()
+events = study.run()
+```
 
 ## License
 
