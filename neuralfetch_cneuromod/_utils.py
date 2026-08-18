@@ -320,7 +320,12 @@ def iter_tseries_runs(
             f"{timeseries_dir}/timeseries/{timeseries}/sub-{sub}/sub-{sub}_task-{task}"
             f"_space-{space}_{TSERIES_DESCRIPT[timeseries]}_timeseries.h5",
         )
-        sub_tseries = h5py.File(h5_path, "r")
+        try:
+            sub_tseries = h5py.File(h5_path, "r")
+        except Exception as e:
+            msg = f"For {self.__class__.__name__}, you may need to run study.download() first "
+            msg += f"as {h5_path} does not exist."
+            raise RuntimeError(msg) from e            
         sessions = list(sub_tseries.keys())
         for ses in sessions:
             runs = list(sub_tseries[ses].keys())
