@@ -137,7 +137,7 @@ class PetitPrince(CNeuroModAudioStudy):
     # Event loading
     # -----------------------------------------------------------------
 
-    def _get_stimulus_path(self):
+    def _get_stimulus_path(self, timeline: dict[str, tp.Any]) -> Path:
         """
         Return the full path of the audiobook segment file (.wav) presented
         during a given run ('timeline').
