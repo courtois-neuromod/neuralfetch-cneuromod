@@ -297,13 +297,14 @@ class HarryPotter(CNeuroModStudy):
             return pd.DataFrame()
 
         # run num: fmriprep/tseries -> bids
-        e_root = event_root.replace("run-", "run-0").replace("ses-001_", "")
-        ep_list = sorted(glob.glob(
-            f"{self._bids_dir}/sub-{timeline['subject']}"
-            f"/func/{event_root}*events.tsv"
-        ))
+        event_wc = (
+            f"{self._bids_dir}/sub-{timeline['subject']}/func"
+            f"/{event_root.replace('run-', 'run-0').replace('ses-001_', '')}"
+            "*events.tsv"
+        )
+        ep_list = sorted(glob.glob(event_wc))
         if len(ep_list) != 1:
-            self.logger.debug("No unique events file found: %s", ep_list[0])
+            self.logger.debug("No unique events file found: %s", event_wc)
             return pd.DataFrame()
 
         bids_events = pd.read_csv(ep_list[0], sep="\t")

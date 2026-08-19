@@ -636,12 +636,13 @@ class CNeuroModStudy(_study.Study):
         if not self._bids_dir.exists():
             return pd.DataFrame()
 
-        ep_list = sorted(glob.glob(
+        event_wc = (
             f"{self._bids_dir}/sub-{timeline['subject']}"
             f"/*{timeline['session']}/func/{event_root}*events.tsv"
-        ))
+        )
+        ep_list = sorted(glob.glob(event_wc))
         if len(ep_list) != 1:
-            self.logger.debug("No unique events file found: %s", ep_list[0])
+            self.logger.debug("No unique events file found: %s", event_wc)
             return pd.DataFrame()
 
         bids_events = pd.read_csv(ep_list[0], sep="\t")
@@ -1233,13 +1234,13 @@ class CNeuroModVideoGameStudy(CNeuroModStudy):
             return pd.DataFrame()
 
         # run num: fmriprep -> bids for mario, mario3, mariostars and shinobi
-        e_root = event_root.replace("run-", "run-0")   
-        ep_list = [x for x in sorted(glob.glob(
-            f"{self._bids_dir}/sub-{timeline['subject']}"
-            f"/*{timeline['session']}/func/{e_root}*events.tsv"
-        )) if not 'desc' in x]
+        event_wc = (
+            f"{self._bids_dir}/sub-{timeline['subject']}/*{timeline['session']}"
+            f"/func/{event_root.replace('run-', 'run-0')}*events.tsv"
+        )
+        ep_list = [x for x in sorted(glob.glob(event_wc)) if not 'desc' in x]
         if len(ep_list) != 1:
-            self.logger.debug("No unique events file found: %s", ep_list[0])
+            self.logger.debug("No unique events file found: %s", event_wc)
             return pd.DataFrame()
 
         replay_events = self._get_replay_events(timeline, ep_list[0])
