@@ -96,12 +96,12 @@ class Friends(CNeuroModMovieStudy):
         Returns
         -------
         list[str]
-            Glob patterns relative to the main repository root, ready to
+            Glob patterns relative to the stimuli repository root, ready to
             be passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
         return [
-            f"{self.path}/stimuli/s*/friends_s0*e*[abcd].mkv",
+            f"{self._stimuli_dir}/s*/friends_s0*e*[abcd].mkv",
         ]
 
     def _annotations_download_patterns(self) -> list[str]:
@@ -119,7 +119,7 @@ class Friends(CNeuroModMovieStudy):
             compatible.
         """
         return [
-            f"{self.path}/annotations/automated_transcription/s*/"
+            f"{self._annotations_dir}/automated_transcription/s*/"
             "friends_s0*e*_model-AA_desc-wUtter_transcript.json",  # TODO: update desc-wSpeaker
         ]
 

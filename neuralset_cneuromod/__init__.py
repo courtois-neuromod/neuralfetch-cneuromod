@@ -7,7 +7,7 @@ This package extends the NeuroAI NeuralSet library to provide Extractor subclass
 all Courtois NeuroMod (CNeuroMod) datasets.
 """
 
-from neuralset_cneuromod import extractors
+from neuralset_cneuromod import events, extractors
 
 __version__ = "0.1.0"
-__all__ = ["extractors"]
+__all__ = ["events", "extractors"]

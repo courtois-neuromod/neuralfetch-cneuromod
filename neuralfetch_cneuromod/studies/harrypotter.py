@@ -190,7 +190,7 @@ class HarryPotter(CNeuroModStudy):
         for sub in self._subject_globs():
             patterns.extend([
                 # Functional events TSVs for this task
-                f"{self.path}/bids/{sub}/func/{sub}_task-*_events.tsv",
+                f"{self._bids_dir}/{sub}/func/{sub}_task-*_events.tsv",
             ])
         return patterns
 
@@ -219,15 +219,15 @@ class HarryPotter(CNeuroModStudy):
         for sub in self._subject_globs():
             patterns.extend([
                 # Preprocessed BOLD in the target space
-                f"{self.path}/fmriprep/{sub}/func/{sub}_"
+                f"{self._fmriprep_dir}/{sub}/func/{sub}_"
                 f"task-*_{space}_desc-preproc_bold.nii.gz",
                 
                 # Confound regressors
-                f"{self.path}/fmriprep/{sub}/func/{sub}_"
+                f"{self._fmriprep_dir}/{sub}/func/{sub}_"
                 f"task-*_desc-confounds_timeseries.tsv",
                 
                 # Brain mask in the target space
-                f"{self.path}/fmriprep/{sub}/func/{sub}_"
+                f"{self._fmriprep_dir}/{sub}/func/{sub}_"
                 f"task-*_{space}_desc-brain_mask.nii.gz",
             ])
         return patterns

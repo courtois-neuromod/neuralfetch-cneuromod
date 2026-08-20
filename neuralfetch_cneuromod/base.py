@@ -36,8 +36,6 @@ import pydantic
 from datalad import api as dl
 
 from exca.steps.backends import Cached
-from neuralset.base import StrCast, Frequency
-from neuralset.events import etypes
 from neuralset.events import study as _study
 
 from . import _utils
@@ -51,74 +49,6 @@ _CNEUROMOD_ALL = "https://github.com/courtois-neuromod/cneuromod.all.git"
 
 # GitHub base URL for CNeuroMod datalad repositories
 _CNEUROMOD_GH = "https://github.com/courtois-neuromod/{repo}.git"
-
-
-class Timeseries(etypes.BaseSplittableEvent):
-    """Pre-processed, masked, detrended and normalized functional MRI (fMRI) 
-    recording event.
-
-    Requires :code:`h5py` to be installed.
-
-    Supports chunking via read() so chunks load only their own slice.
-
-    Parameters
-    ----------
-    subject : str
-        Subject identifier, e.g. ``"01"`` (required).
-    filepath : Path or str
-        Path to the .HDF5 file containing nested timeseries.     
-    session : str
-        Session identifier, e.g. ``"ses-001"`` (required). First-level key
-        in .HDF5 file structure.
-    run : str
-        Run identifier, e.g. ``"ses-001_task-bourne01_timeseries"`` (required).
-        Second-level key in .HDF5 file structure.
-    frequency : float
-        Sampling frequency in Hz (required).
-    timeseries : str
-        Timeseries format, e.g. ``"cneuromod2026"``, ``"schaefer1000"``,
-        ``"voxel_mni"``, ``"voxel_native"``.
-    space : str
-        Coordinate space before timeseries extraction,
-        e.g. ``"MNI152NLin2009cAsym"``, ``"T1w"``.
-    """
-    subject: StrCast
-    session: str | None = None
-    run: str | None = None
-    timeseries: str = _utils.DEFAULT_TIMESERIES
-    space: str = _utils.DEFAULT_SPACE
-
-    def model_post_init(self, log__: tp.Any) -> None:
-        if not self.frequency or pd.isna(self.frequency):
-            raise ValueError(
-                "Frequency must be provided for Timeseries event."
-            )
-        if not self.duration:
-            raise ValueError(
-                "Duration must be provided for Timeseries event."
-            )
-        if not self.session:
-            raise ValueError(
-                "Session must be provided for Timeseries event."
-            )
-        if not self.run:
-            raise ValueError("Run must be provided for Timeseries event.")
-        super().model_post_init(log__)
-
-    def read(self) -> tp.Any:
-        # If need be, crop based on specified offser and duration``.
-        tseries = super().read()
-        sr = Frequency(self.frequency)
-        start_vol = sr.to_ind(self.offset)
-        end_vol = start_vol + sr.to_ind(self.duration)
-        if start_vol == 0 and end_vol >= tseries.shape[0]:
-            return tseries
-        return tseries[:, start_vol:end_vol]  # chunked
-
-    def _read(self) -> tp.Any:
-        with h5py.File(self.filepath, "r") as f:
-            tseries = np.array(f[self.session][self.run]).T  # TimedArray last dim is time when freq > 0
-        return tseries
 
 
 class CNeuroModStudy(_study.Study):
@@ -379,7 +309,7 @@ class CNeuroModStudy(_study.Study):
         for sub in self._subject_globs():
             patterns.extend([
                 # Functional events TSVs for this task
-                f"{self.path}/bids/{sub}/ses-*/func/{sub}_ses-*_task-*_events.tsv",
+                f"{self._bids_dir}/{sub}/ses-*/func/{sub}_ses-*_task-*_events.tsv",
             ])
         return patterns
 
@@ -407,15 +337,15 @@ class CNeuroModStudy(_study.Study):
         for sub in self._subject_globs():
             patterns.extend([
                 # Preprocessed BOLD in the target space
-                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
                 f"task-*_{space}_desc-preproc_bold.nii.gz",
                 
                 # Confound regressors
-                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
                 f"task-*_desc-confounds_timeseries.tsv",
                 
                 # Brain mask in the target space
-                f"{self.path}/fmriprep/{sub}/ses-*/func/{sub}_ses-*_"
+                f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
                 f"task-*_{space}_desc-brain_mask.nii.gz",
             ])
         return patterns
@@ -446,7 +376,7 @@ class CNeuroModStudy(_study.Study):
         for sub in self._subject_globs():
             patterns.extend([
                 # BOLD timeseries in the target space
-                f"{self.path}/timeseries/timeseries/{tseries}/{sub}/{sub}_task-"
+                f"{self._timeseries_dir}/timeseries/{tseries}/{sub}/{sub}_task-"
                 f"{task}_{space}_{ts_desc}_timeseries.h5",
             ])
         return patterns
@@ -481,7 +411,7 @@ class CNeuroModStudy(_study.Study):
         self.logger.info(
             "[%s] BIDS patterns: %s", cls_name, bids_patterns
         )
-        _utils.datalad_get_list(bids_patterns, f"{self.path}/bids")
+        _utils.datalad_get_list(bids_patterns, f"{self._bids_dir}")
 
         if self.timeseries is None:
             fmriprep_patterns = self._fmriprep_download_patterns()
@@ -489,7 +419,7 @@ class CNeuroModStudy(_study.Study):
                 "[%s] fMRIPrep patterns (space=%s): %s",
                 cls_name, self.space, fmriprep_patterns,
             )
-            _utils.datalad_get_list(fmriprep_patterns, f"{self.path}/fmriprep")
+            _utils.datalad_get_list(fmriprep_patterns, f"{self._fmriprep_dir}")
 
         else:
             timeseries_patterns = self._timeseries_download_patterns()
@@ -497,7 +427,7 @@ class CNeuroModStudy(_study.Study):
                 "[%s] timeseries patterns (timeseries=%s): %s",
                 cls_name, self.timeseries, timeseries_patterns,
             )
-            _utils.datalad_get_list(timeseries_patterns, f"{self.path}/timeseries")
+            _utils.datalad_get_list(timeseries_patterns, f"{self._timeseries_dir}")
 
     # -----------------------------------------------------------------
     # Timeline iteration
@@ -926,14 +856,14 @@ class CNeuroModAudioStudy(CNeuroModStudy):
         self.logger.info(
             "[%s] stimuli patterns: %s", stimuli_patterns
         )
-        _utils.datalad_get_list(stimuli_patterns, f"{self.path}/stimuli")
+        _utils.datalad_get_list(stimuli_patterns, f"{self._stimuli_dir}")
 
         transcript_patterns = self._annotations_download_patterns()
         self.logger.info(
             "[%s] transcript patterns (space=%s): %s",
             transcript_patterns,
         )
-        _utils.datalad_get_list(transcript_patterns, f"{self.path}/annotations")
+        _utils.datalad_get_list(transcript_patterns, f"{self._annotations_dir}")
 
     # -----------------------------------------------------------------
     # Event loading
@@ -1129,7 +1059,7 @@ class CNeuroModVideoGameStudy(CNeuroModStudy):
         Returns
         -------
         list[str]
-            Glob patterns relative to the main repository root, ready to be
+            Glob patterns relative to the BIDS repository root, ready to be
             passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
@@ -1137,7 +1067,7 @@ class CNeuroModVideoGameStudy(CNeuroModStudy):
         for sub in self._subject_globs():
             patterns.extend([
                 # Game replays (.mp4) for this videogaming task
-                f"{self.path}/bids/{sub}/ses-*/gamelogs/{sub}_ses-*_task-*_recording.mp4",
+                f"{self._bids_dir}/{sub}/ses-*/gamelogs/{sub}_ses-*_task-*_recording.mp4",
             ])
         return patterns
 
@@ -1163,7 +1093,7 @@ class CNeuroModVideoGameStudy(CNeuroModStudy):
         self.logger.info(
             "[%s] replay patterns: %s", replay_patterns
         )
-        _utils.datalad_get_list(replay_patterns, f"{self.path}/bids")
+        _utils.datalad_get_list(replay_patterns, f"{self._bids_dir}")
 
 
     # -----------------------------------------------------------------

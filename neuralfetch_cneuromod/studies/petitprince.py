@@ -25,13 +25,41 @@ References
 
 from __future__ import annotations
 
+import os
 import json
 import typing as tp
+from contextlib import contextmanager
 from pathlib import Path
 
 import pandas as pd
+from datalad import api as dl
 
+from neuralfetch_cneuromod import _utils
 from neuralfetch_cneuromod.base import CNeuroModAudioStudy
+
+
+@contextmanager
+def unsigned_aws_session():
+    # Save original credentials
+    aws_vars = [
+        'AWS_ACCESS_KEY_ID',
+        'AWS_SECRET_ACCESS_KEY',
+        'AWS_SESSION_TOKEN',
+        'AWS_PROFILE',
+    ]
+    saved = {k: os.environ.get(k) for k in aws_vars}
+
+    # Unset for anonymous downloads
+    for k in aws_vars:
+        os.environ.pop(k, None)
+
+    try:
+        yield
+    finally:
+        # Restore original credentials
+        for k, v in saved.items():
+            if v is not None:
+                os.environ[k] = v
 
 
 class PetitPrince(CNeuroModAudioStudy):
@@ -81,6 +109,38 @@ class PetitPrince(CNeuroModAudioStudy):
     bibtex: tp.ClassVar[str] = CNeuroModAudioStudy.bibtex
 
     # -----------------------------------------------------------------
+    # Directory resolution
+    # -----------------------------------------------------------------
+
+    def model_post_init(self, log__: tp.Any) -> None:
+        """Pull stimulus subdirectory content from source."""
+        super().model_post_init(log__)
+        dl.get(
+            path=f"{self._stimuli_dir}/OpenNeuroDatasets/ds003643",
+            dataset=f"{self._stimuli_dir}",
+            get_data=False, jobs="auto",
+        )
+
+    # -----------------------------------------------------------------
+    # Download
+    # -----------------------------------------------------------------
+    def _download(self) -> None:
+        """Selectively fetch .wav stimulus files from OpenNeuro submodule without 
+        using S3 credentials.
+
+        Temporary work-around until all CNeuroMod data assets are open on CONP
+        # TODO: remove _download() overwrite and unsigned_aws_session() defined above
+        """
+        cls_name = self.__class__.__name__
+
+        with unsigned_aws_session():
+            _utils.datalad_get_list(
+                self._stimuli_download_patterns(), f"{self._stimuli_dir}",
+            )
+
+        super()._download()
+
+    # -----------------------------------------------------------------
     # Download pattern builders
     # -----------------------------------------------------------------
 
@@ -103,7 +163,7 @@ class PetitPrince(CNeuroModAudioStudy):
         patterns = []
         for lang in self.LANGUAGES:
             patterns.extend([
-                f"{self.path}/stimuli/OpenNeuroDatasets/ds003643/"
+                f"{self._stimuli_dir}/OpenNeuroDatasets/ds003643/"
                 f"stimuli/task-lpp{lang}_section*.wav",
             ])
         return patterns
@@ -128,7 +188,7 @@ class PetitPrince(CNeuroModAudioStudy):
         for lang in self.LANGUAGES:
           patterns.extend([
                 # Audiobook transcribed with AssemblyAI speech-to-text
-                f"{self.path}/annotations/annotations/transcripts/{lang}/"
+                f"{self._annotations_dir}/annotations/transcripts/{lang}/"
                 f"task-lpp{lang}_section-*_model-AA_transcript.json",
             ])
         return patterns
@@ -182,7 +242,7 @@ class PetitPrince(CNeuroModAudioStudy):
         return ap
 
 
-    def _load_transcript(self):
+    def _load_transcript(self, timeline: dict[str, tp.Any]) -> tuple[dict, str]:
         """
         Load the speech-to-text transcript of the audiobook segment
         presented during a given run ('timeline').

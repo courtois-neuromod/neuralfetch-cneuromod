@@ -19,24 +19,15 @@ import pandas as pd
 import pytest
 
 # Import all study classes
-#from neuralfetch_cneuromod.studies.emotion-videos import EmotionVideos
-#from neuralfetch_cneuromod.studies.floc import Floc
-from neuralfetch_cneuromod.studies.friends import Friends
-#from neuralfetch_cneuromod.studies.gamepad import Gamepad
-from neuralfetch_cneuromod.studies.harrypotter import HarryPotter
-#from neuralfetch_cneuromod.studies.hcptrt import HcpTrt
-from neuralfetch_cneuromod.studies.mario import Mario
-from neuralfetch_cneuromod.studies.mario3 import Mario3
-from neuralfetch_cneuromod.studies.mariostars import MarioStars
-from neuralfetch_cneuromod.studies.movie10 import Movie10
-#from neuralfetch_cneuromod.studies.narratives import Narratives
-#from neuralfetch_cneuromod.studies.ood import OOD
-from neuralfetch_cneuromod.studies.petitprince import PetitPrince
-#from neuralfetch_cneuromod.studies.retinotopy import Retinotopy
-from neuralfetch_cneuromod.studies.shinobi import Shinobi
-#from neuralfetch_cneuromod.studies.things import Things
-#from neuralfetch_cneuromod.studies.triplets import Triplets
 
+from neuralfetch_cneuromod.studies import [
+    #EmotionVideos, Floc,
+    Friends, HarryPotter, #HcpTrt,
+    Mario, Mario3, MarioStars, Movie10,
+    #Narratives, OOD,
+    PetitPrince, #Retinotopy,
+    Shinobi, #Things, #Triplets,
+]
 
 # ---------------------------------------------------------------------------
 # Entry-point discovery

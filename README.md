@@ -13,11 +13,11 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 | `Emotion-videos` | Cohen & Keltner emotion-evoking videos | Visual movie |
 | `Floc` | Functional localizer (fLoc) | Semantic image categories |
 | `Friends` | Friends TV show seasons 1-6 | Audio-visual movie |
-| `Gamepad` | Gamepad motor task | Motor |
 | `HarryPotter` | Harry Potter book chapter | Written narrative |
 | `HcpTrt` | HCP-style test-retest | Multimodal |
 | `Mario` | Super Mario Bros gameplay | Video game |
-| `MarioStars` | Super Mario All-stars gameplay | Video game |
+| `Mario3` | Super Mario Bros 3 gameplay | Video game |
+| `MarioStars` | Super Mario All-Stars gameplay | Video game |
 | `Movie10` | 3 Hollywood movies and 1 BBC documentary | Audio-visual movie |
 | `Narratives` | Stories from Nastase stimulus set | Auditory narrative and free recall |
 | `OOD` | OOD movie stimuli | Audio-visual movie |
@@ -81,27 +81,31 @@ E.g.,
 cd cneuromod.all/friends
 datalad get bids/*
 datalad get fmriprep/*
+datalad get stimuli/*
+datalad get annotations/*
 ```
 
-Use the Study classes to perform a selective download of the files you need for modelling with `datalad get`. The downloading step takes a long time, but it only needs to be performed once when you first instantiate a new Study class.  
+Use the Study classes to download of the files you need for modelling (see Quick Start). Study.download() uses the [python DataLad API](https://docs.datalad.org/en/stable/generated/datalad.api.get.html) internally to perform a selective file download. The downloading step takes a long time, but it only needs to be performed once when you first instantiate a new Study class.  
 
 
 ## Quick Start
-
-The study path can point to the cloned cneuromod.all repository (RECOMMENDED), or to a specific study subfolder (e.g., `path/to/cneuromod.all/friends`). 
-
-Alternatively, it can point to a folder that shares the study name (e.g., `/path/to/friends`). If that folder is empty or non-existent, the study class will use DataLad to clone and pull from the proper set of repositories.
-
-In either scenario, the study class resolves its subfolder structure automatically. 
 
 ```python
 from neuralfetch_cneuromod.studies.friends import Friends
 
 study = Friends(path="path/to/cneuromod.all")
+```
 
+The study path can point to the cloned cneuromod.all repository (RECOMMENDED), or to a specific study subfolder inside cneuromod.all (e.g., `path/to/cneuromod.all/friends`). 
+
+Alternatively, it can point to any folder that shares the study name (e.g., `/path/to/friends`). If that folder is empty or non-existent, the study class will use DataLad to clone and pull from the proper set of repositories.
+
+In either scenario, the study class resolves its subfolder structure automatically. 
+
+```python
 # Download study files (requires SSH key + access).
-# This step uses the `datalad get` command to download files selectively. 
-# Warning: download can be slow. Consider running inside a tmux session.
+# This step uses the `datalad get` command to download files selectively,
+# which can be slow. Consider running inside a tmux session.
 study.download()
 print(study.study_summary())
 

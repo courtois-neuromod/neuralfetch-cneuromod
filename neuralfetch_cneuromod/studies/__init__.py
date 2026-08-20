@@ -25,8 +25,6 @@ __all__ = [
     "Mario",
     "Mario3",
     "MarioStars",
-    "HcpTrt",
-    "Mario",
     "Movie10",
     "PetitPrince",
     "Retinotopy",

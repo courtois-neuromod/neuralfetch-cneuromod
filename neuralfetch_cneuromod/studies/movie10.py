@@ -89,7 +89,7 @@ class Movie10(CNeuroModMovieStudy):
         Returns
         -------
         list[str]
-            Glob patterns relative to the main repository root, ready to
+            Glob patterns relative to the stimuli repository root, ready to
             be passed as ``datalad get`` arguments. Patterns are python glob
             compatible.
         """
@@ -97,7 +97,7 @@ class Movie10(CNeuroModMovieStudy):
         for mvie in self.MOVIES:
             patterns.extend([
                 # Movie stimuli MKVs shown for this movie-watching task
-                f"{self.path}/stimuli/{mvie}/{mvie}*.mkv",
+                f"{self._stimuli_dir}/{mvie}/{mvie}*.mkv",
             ])
         return patterns
 
@@ -119,7 +119,7 @@ class Movie10(CNeuroModMovieStudy):
         for mvie in self.MOVIES:
             patterns.extend([
                 # Movie dialogues transcribed with AssemblyAI speech-to-text
-                f"{self.path}/annotations/annotations/transcripts/"
+                f"{self._annotations_dir}/annotations/transcripts/"
                 f"{mvie}/movie10_{mvie}*_model-AA_transcript.json",
             ])
         return patterns
