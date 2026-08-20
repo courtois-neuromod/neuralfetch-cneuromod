@@ -307,7 +307,7 @@ class PetitPrince(CNeuroModAudioStudy):
         audio_path = self._get_stimulus_path(timeline)
         audio_event: dict[str, tp.Any] = {
             "type": "Audio",
-            "start": 0.0,
+            "start": 4.0,
             "filepath": audio_path,
         }
         stimuli_events = [audio_event]

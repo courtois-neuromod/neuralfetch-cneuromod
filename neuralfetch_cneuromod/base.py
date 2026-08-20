@@ -992,7 +992,7 @@ class CNeuroModMovieStudy(CNeuroModAudioStudy):
         movie_path = self._get_stimulus_path(timeline)
         movie_event: dict[str, tp.Any] = {
             "type": "Video",
-            "start": 0.0,
+            "start": 0.0,  # 0s onset for Friends, Movie10 and OOD
             "filepath": movie_path,
         }
         stimuli_events = [movie_event]

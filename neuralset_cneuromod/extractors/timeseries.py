@@ -5,7 +5,7 @@ import numpy as np
 from neuralset import base, BaseExtractor
 from neuralset.base import TimedArray as TimedArray
 
-from neuralset_cneuromod.events import Timeseries
+from neuralset_cneuromod.events.timeseries import Timeseries
 
 
 class TimeseriesExtractor(BaseExtractor):
