@@ -23,6 +23,7 @@ Concrete study classes only need to:
 
 from __future__ import annotations
 
+import glob
 import logging
 import typing as tp
 from pathlib import Path
