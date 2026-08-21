@@ -1128,6 +1128,7 @@ class CNeuroModVideoGameStudy(CNeuroModStudy):
         df = pd.read_csv(events_path, sep="\t")
         game_events = df[df["trial_type"]=="gym-retro_game"]
         replay_path = Path(events_path.replace("/func", "/gamelogs")).parent
+        game_events = game_events[game_events["stim_file"].str.contains('.bk2')]
 
         r_list = [{
             "type": "Video",
