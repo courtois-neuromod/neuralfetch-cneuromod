@@ -31,7 +31,6 @@ class Shinobi(CNeuroModVideoGameStudy):
     Parameters
     ----------
     path:
-    path:
         Root data directory.  Resolves ``{path}/shinobi/bids`` and
         ``{path}/shinobi/fmriprep``  or ``{path}/shinobi/timeseries``.
     space:
@@ -64,6 +63,7 @@ class Shinobi(CNeuroModVideoGameStudy):
     TASK: tp.ClassVar[str] = "shinobi"
     BIDS_REPO: tp.ClassVar[str] = "shinobi"
     FMRIPREP_REPO: tp.ClassVar[str] = "shinobi.fmriprep"
+    TIMESERIES_REPO: tp.ClassVar[str] = "shinobi.timeseries"
 
     dataset_name: tp.ClassVar[str] = "CNeuroMod Shinobi"
     description: tp.ClassVar[str] = (
