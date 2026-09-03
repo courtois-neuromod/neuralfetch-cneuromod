@@ -2,7 +2,7 @@ from tqdm import tqdm
 import typing as tp
 
 import numpy as np
-from neuralset import base, BaseExtractor
+from neuralset import BaseExtractor
 from neuralset.base import TimedArray as TimedArray
 
 from neuralset_cneuromod.events.timeseries import Timeseries
