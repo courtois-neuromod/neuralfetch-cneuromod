@@ -20,14 +20,14 @@ import pytest
 
 # Import all study classes
 
-from neuralfetch_cneuromod.studies import [
+from neuralfetch_cneuromod.studies import (
     #EmotionVideos, Floc,
     Friends, HarryPotter, #HcpTrt,
     Mario, Mario3, MarioStars, Movie10,
     #Narratives, OOD,
     PetitPrince, #Retinotopy,
     Shinobi, #Things, #Triplets,
-]
+)
 
 # ---------------------------------------------------------------------------
 # Entry-point discovery
