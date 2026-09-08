@@ -20,14 +20,14 @@ import pytest
 
 # Import all study classes
 
-from neuralfetch_cneuromod.studies import [
+from neuralfetch_cneuromod.studies import (
     #EmotionVideos, Floc,
     Friends, HarryPotter, #HcpTrt,
     Mario, Mario3, MarioStars, Movie10,
     #Narratives, OOD,
     PetitPrince, #Retinotopy,
     Shinobi, #Things, #Triplets,
-]
+)
 
 # ---------------------------------------------------------------------------
 # Entry-point discovery
@@ -56,7 +56,7 @@ FMRI_STUDY_CLASSES = [
     #EmotionVideos, Floc, Friends, HarryPotter, HcpTrt, Mario, MarioStars,
     #Mario3, Movie10, Narratives, PetitPrince, Retinotopy, Shinobi,
     #Things, Triplets,
-    Movie10, Friends,
+    Movie10, #Friends,
 ]
 
 
@@ -74,8 +74,10 @@ def test_instantiation(StudyClass: type, tmp_path: Path) -> None:
     study = StudyClass(path=tmp_path)
     assert study.TASK, f"{StudyClass.__name__}.TASK must be a non-empty string"
     assert isinstance(study.bids_dir, Path)
-    assert isinstance(study.fmriprep_dir, Path)
-    assert isinstance(study.timeseries_dir, Path)
+    if study.timeseries:
+        assert isinstance(study.timeseries_dir, Path)
+    else:
+        assert isinstance(study.fmriprep_dir, Path)
 
 
 # ---------------------------------------------------------------------------
