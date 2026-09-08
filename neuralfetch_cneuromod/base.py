@@ -580,20 +580,20 @@ class CNeuroModStudy(_study.Study):
         # Map BIDS columns to neuralset conventions
         rows = []
         for _, row in bids_events.iterrows():
-            event = self._extract_stimulus_event(row)
-            if event:
-                rows.append(event)
+            events = self._extract_stimulus_event(row)
+            if events:
+                rows += events
         return pd.DataFrame(rows)
 
 
     def _extract_stimulus_event(
         self,
         row: pd.Series,
-    ) -> dict[str, tp.Any] | None:
+    ) -> list[dict[str, tp.Any]] | None:
         """Implement file processing logic in subclasses.
         
-        The returned ``event`` dict must at least contain ``type``, ``start``,
-        and ``duration``.
+        Return a list of ``event`` dictionaries that must each
+        contain at least ``type``, ``start``, and ``duration``.
 
         e.g.,
         event: dict[str, tp.Any] = {
@@ -605,6 +605,7 @@ class CNeuroModStudy(_study.Study):
         for idx in row.index:
             if idx not in ("onset", "duration", "trial_type"):
                 event[idx] = row[idx]
+        events = [event]
 
         Returns
         -------

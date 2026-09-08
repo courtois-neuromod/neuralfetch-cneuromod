@@ -147,8 +147,8 @@ class HarryPotter(CNeuroModStudy):
 
     Notes
     -----
-    The BIDS events TSV contains word-level onsets derived from forced
-    alignment of the audiobook text with the audio stimulus.
+    The bids events.tsv files contains word-level onsets, as words from the 
+    chapter appears one at a time on the screen at a 2 Hz frequency.
 
     Examples
     --------
