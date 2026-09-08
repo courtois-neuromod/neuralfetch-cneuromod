@@ -13,12 +13,15 @@ or git-annex directly.
 
 from __future__ import annotations
 
+import glob
 import logging
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
+import h5py
 import numpy as np
 import pandas as pd
+from datalad import api as dl
 
 logger = logging.getLogger(__name__)
 
@@ -28,227 +31,23 @@ logger = logging.getLogger(__name__)
 
 #: Default MNI152 template identifier used by fMRIPrep.
 DEFAULT_SPACE = "MNI152NLin2009cAsym"
+#: Default fMRI TR in seconds.
+DEFAULT_TR = 1.49
 #: Default resolution string used by fMRIPrep.
 DEFAULT_RESOLUTION: str | None = "2"
-
-
-def bold_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-    space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
-    suffix: str = "bold",
-    extension: str = ".nii.gz",
-) -> Path:
-    """Return the expected path to a fMRIPrep preprocessed BOLD file.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset (i.e. the directory that
-        contains ``sub-*`` folders).
-    subject:
-        Subject label *without* the ``sub-`` prefix (e.g. ``"01"``).
-    task:
-        BIDS task label (e.g. ``"friends"``).
-    session:
-        BIDS session label without the ``ses-`` prefix.  When ``None`` the
-        path is built without a session level.
-    run:
-        Run index (1-based integer) or string label.  When ``None`` the
-        ``run-`` entity is omitted from the filename.
-    space:
-        fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``).
-    resolution:
-        Template resolution label (default ``"2"``).
-    suffix:
-        BIDS suffix (default ``"bold"``).
-    extension:
-        File extension (default ``".nii.gz"``).
-
-    Returns
-    -------
-    Path
-        Full path to the expected BOLD NIfTI file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    if space is not None:
-        entities.append(f"space-{space}")
-    if resolution is not None:
-        entities.append(f"res-{resolution}")
-    entities.append(f"desc-preproc_{suffix}")
-
-    fname = "_".join(entities) + extension
-    return sub_dir / fname
-
-
-def confounds_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-) -> Path:
-    """Return the expected path to a fMRIPrep confounds timeseries TSV.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-
-    Returns
-    -------
-    Path
-        Full path to the expected confounds TSV file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    entities.append("desc-confounds_timeseries")
-
-    fname = "_".join(entities) + ".tsv"
-    return sub_dir / fname
-
-
-def mask_path(
-    fmriprep_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-    space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
-) -> Path:
-    """Return the expected path to a fMRIPrep brain mask NIfTI.
-
-    Parameters
-    ----------
-    fmriprep_dir:
-        Root of the fMRIPrep derivatives dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-    space:
-        fMRIPrep output space template.
-    resolution:
-        Template resolution label.
-
-    Returns
-    -------
-    Path
-        Full path to the expected brain mask NIfTI file.
-    """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{run}")
-    if space is not None:
-        entities.append(f"space-{space}")
-    if resolution is not None:
-        entities.append(f"res-{resolution}")
-    entities.append("desc-brain_mask")
-
-    fname = "_".join(entities) + ".nii.gz"
-    return sub_dir / fname
-
-
-def events_path(
-    bids_dir: Path,
-    subject: str,
-    task: str,
-    *,
-    session: str | None = None,
-    run: str | int | None = None,
-) -> Path:
-    """Return the expected path to a BIDS events TSV file in the raw dataset.
-
-    Parameters
-    ----------
-    bids_dir:
-        Root of the raw BIDS dataset.
-    subject:
-        Subject label without the ``sub-`` prefix.
-    task:
-        BIDS task label.
-    session:
-        BIDS session label without ``ses-`` prefix.
-    run:
-        Run index or label; omitted when ``None``.
-
-    Returns
-    -------
-    Path
-        Full path to the expected BIDS events TSV.
-    """
-    sub_dir = bids_dir / f"sub-{subject}"
-    if session is not None:
-        sub_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        sub_dir = sub_dir / "func"
-
-    entities: list[str] = [f"sub-{subject}"]
-    if session is not None:
-        entities.append(f"ses-{session}")
-    entities.append(f"task-{task}")
-    if run is not None:
-        entities.append(f"run-{int(run):02d}")
-    entities.append("events")
-
-    fname = "_".join(entities) + ".tsv"
-    return sub_dir / fname
+#: Timeseries file name descriptor 
+DEFAULT_TIMESERIES = "cneuromod2026"
+TSERIES_DESCRIPT = {
+    "cneuromod2026": "atlas-cneuromod26_desc-1134Parcels",
+    "schaefer1000": "atlas-Schaefer18_desc-1000Parcels7Networks",
+    "voxel_mni": "desc-voxelwise",
+    "voxel_native": "desc-voxelwise",
+}
 
 
 # ---------------------------------------------------------------------------
 # BIDS entity discovery
 # ---------------------------------------------------------------------------
-
 
 def get_subjects(directory: Path) -> list[str]:
     """Return sorted list of subject labels found under *directory*.
@@ -287,8 +86,7 @@ def get_sessions(directory: Path, subject: str) -> list[str]:
     Returns
     -------
     list[str]
-        Sorted session labels (e.g. ``["001", "002"]``).  Returns ``[]``
-        when no ``ses-*`` subdirectories exist (session-less datasets).
+        Sorted session labels (e.g. ``["001", "002"]``).
     """
     sub_dir = directory / f"sub-{subject}"
     if not sub_dir.exists():
@@ -304,12 +102,10 @@ def get_sessions(directory: Path, subject: str) -> list[str]:
 def get_bold_runs(
     fmriprep_dir: Path,
     subject: str,
-    task: str,
     *,
     session: str | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
-) -> list[str | None]:
+) -> list[tuple[str, str | None, Path]]:
     """Return sorted list of run labels for which a preproc BOLD file exists.
 
     When no ``run-`` entity is present in the filenames, returns ``[None]``
@@ -321,99 +117,84 @@ def get_bold_runs(
         Root of the fMRIPrep derivatives dataset.
     subject:
         Subject label without ``sub-`` prefix.
-    task:
-        BIDS task label.
     session:
         BIDS session label without ``ses-`` prefix.
     space:
         fMRIPrep output space template.
-    resolution:
-        Template resolution label.
 
     Returns
     -------
-    list[str | None]
-        Run labels (without ``run-`` prefix) or ``[None]`` for a single
-        unlabelled run.
+    list[tuple[str, str | None, Path]]
+        - Task run label (without ``task-`` prefix), 
+        - Run number (without ``run-`` prefix) or ``None`` if no run number,
+        - Full path to run BOLD file
     """
-    sub_dir = fmriprep_dir / f"sub-{subject}"
-    if session is not None:
-        func_dir = sub_dir / f"ses-{session}" / "func"
-    else:
-        func_dir = sub_dir / "func"
+    sub_dir = fmriprep_dir / f"sub-{subject}" / f"ses-{session}" / "func"
 
-    if not func_dir.exists():
+    if not sub_dir.exists():
         return []
 
     pattern_parts = [
-        f"sub-{subject}",
-        f"_ses-{session}" if session else "",
-        f"_task-{task}*",
+        f"sub-{subject}_ses-{session}_task-*",
+        f"_space-{space}_desc-preproc_bold.nii.gz",
     ]
-    if space is not None:
-        pattern_parts.append(f"_space-{space}")
-    if resolution is not None:
-        pattern_parts.append(f"_res-{resolution}")
-    pattern_parts.append("_desc-preproc_bold.nii.gz")
     
     pattern = "".join(pattern_parts)
-    bold_files = sorted(func_dir.glob(pattern))
-    runs: list[str | None] = []
+    bold_files = sorted(sub_dir.glob(pattern))
+    runs = []
     for f in bold_files:
-        # Extract run entity from filename
+        # Extract task-run entity from filename
         stem = f.name
         run: str | None = None
+        task: str | None = None        
         for entity in stem.split("_"):
-            if entity.startswith("run-"):
+            if entity.startswith("task-"):
+                task = entity[5:]
+            elif entity.startswith("run-"):
                 run = entity[4:]
                 break
-        runs.append(run)
+        runs.append((task, run, f))
 
     return runs if runs else []
 
 
 # ---------------------------------------------------------------------------
-# Data loading helpers
+# Datalad get helpers
 # ---------------------------------------------------------------------------
 
-
-def load_events_tsv(path: Path) -> pd.DataFrame:
-    """Load and validate a BIDS events TSV file.
-
-    BIDS events files must contain at minimum ``onset`` and ``duration``
-    columns.  Additional columns (e.g. ``trial_type``, ``stim_file``) are
-    preserved.
+def datalad_get_list(
+    patterns: list,
+    dset_path: str
+) -> None:
+    """Pulls files selectively from a dataset submodule by passing BIDS glob 
+    patterns to ``datalad get``.
 
     Parameters
     ----------
-    path:
-        Path to the ``*_events.tsv`` file.
+    patterns:
+        List of file patterns to download from a submodule
+    dset_path:
+        Path to the submodule that contains the files (the 'dataset')
 
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with at least ``onset`` and ``duration`` float columns.
-
-    Raises
-    ------
-    FileNotFoundError
-        If *path* does not exist.
-    ValueError
-        If required BIDS columns are missing.
     """
-    if not path.exists():
-        raise FileNotFoundError(f"BIDS events file not found: {path}")
-    df = pd.read_csv(path, sep="\t")
-    required = {"onset", "duration"}
-    missing = required - set(df.columns)
-    if missing:
-        raise ValueError(
-            f"BIDS events file {path} is missing required columns: {missing}"
-        )
-    df["onset"] = pd.to_numeric(df["onset"], errors="coerce")
-    df["duration"] = pd.to_numeric(df["duration"], errors="coerce")
-    return df
+    for pattern in patterns:
+        dl_files = sorted(glob.glob(pattern))
+        if len(dl_files):
+            dl.get(path=dl_files, dataset=dset_path, jobs="auto")
 
+
+def _set_dir_permissions(path: Path) -> None:
+    """Overwrites study._set_dir_permissions() helper function that sets 
+    777 permissions recursively on a dataset repository. 
+    
+    This reset is overly permissive, and it is incompatible with the selective 
+    file download implemented with datalad get.
+    """
+    pass
+
+# ---------------------------------------------------------------------------
+# Data loading helpers
+# ---------------------------------------------------------------------------
 
 def load_confounds_tsv(
     path: Path,
@@ -450,12 +231,9 @@ def load_confounds_tsv(
 
 def iter_bids_runs(
     fmriprep_dir: Path,
-    bids_dir: Path | None,
-    task: str,
     *,
     subjects: list[str] | None = None,
     space: str = DEFAULT_SPACE,
-    resolution: str = DEFAULT_RESOLUTION,
 ) -> Iterator[dict[str, Any]]:
     """Iterate over all available (subject, session, run) triples in *fmriprep_dir*.
 
@@ -467,25 +245,17 @@ def iter_bids_runs(
     ----------
     fmriprep_dir:
         Root of the fMRIPrep derivatives dataset.
-    bids_dir:
-        Root of the raw BIDS dataset.  Used for session discovery when the
-        fmriprep layout does not include explicit ``ses-*`` directories.
-        Pass ``None`` to skip cross-referencing with the raw BIDS layout.
-    task:
-        BIDS task label.
     subjects:
         Restrict iteration to these subject labels (without ``sub-`` prefix).
         Defaults to all subjects found in *fmriprep_dir*.
     space:
         fMRIPrep output space template.
-    resolution:
-        Template resolution label.
 
     Yields
     ------
     dict
-        Keys: ``subject`` (str), ``session`` (str | None), ``run`` (str | None),
-        ``task`` (str).
+        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str), ``task`` (str),
+        ``run`` (str | None).
     """
     available_subjects = get_subjects(fmriprep_dir)
     if subjects is not None:
@@ -493,22 +263,74 @@ def iter_bids_runs(
 
     for sub in available_subjects:
         sessions = get_sessions(fmriprep_dir, sub)
-        if not sessions:
-            # session-less dataset
+        for ses in sessions:
             runs = get_bold_runs(
-                fmriprep_dir, sub, task, session=None,
-                space=space, resolution=resolution
+                fmriprep_dir, sub, 
+                session=ses, space=space,
             )
-            for run in runs:
-                yield dict(subject=sub, session=None, run=run, task=task)
-        else:
-            for ses in sessions:
-                runs = get_bold_runs(
-                    fmriprep_dir, sub, task, session=ses,
-                    space=space, resolution=resolution
+            for task, run, run_path in runs:
+                yield dict(
+                    subject=sub, file_path=str(run_path),
+                    session=ses, task=task, run=run,
                 )
-                for run in runs:
-                    yield dict(subject=sub, session=ses, run=run, task=task)
+
+
+def iter_tseries_runs(
+    timeseries_dir: Path,
+    *,
+    task: str,
+    subjects: list[str] | None = None,
+    timeseries: str = DEFAULT_TIMESERIES,
+    space: str = DEFAULT_SPACE,
+) -> Iterator[dict[str, Any]]:
+    """Iterate over all available (subject, session, run) triples in nested 
+    .h5 timeseries files for specified timeseries in *timeseries_dir*.
+
+    Only triples for which a preprocessed timeseries actually exists
+    are yielded.  This is the alternative iterator used by ``iter_timelines()``
+    to compile timeseries in all study classes for which they have been extracted.
+
+    Parameters
+    ----------
+    timeseries_dir:
+        Root of the timeseries derivatives dataset.
+    task: 
+        cneuromod dataset name (e.g., movie10)
+    subjects:
+        Restrict iteration to these subject labels (without ``sub-`` prefix).
+        Defaults to all subjects found in *fmriprep_dir*.
+    timeseries:
+        name of the pre-extracted, masked, denoised and normalized timeseries
+    space:
+        fMRIPrep output space template of BOLD data processed into timeseries.
+
+    Yields
+    ------
+    dict
+        Keys: ``subject`` (str), ``file_path`` (str), ``session`` (str),  ``task`` (None), ``run`` (str).
+    """
+    available_subjects = get_subjects(Path(
+        f"{timeseries_dir}/timeseries/{timeseries}"
+    ))
+    if subjects is not None:
+        available_subjects = [s for s in available_subjects if s in subjects]
+
+    for sub in available_subjects:
+        h5_path = Path(
+            f"{timeseries_dir}/timeseries/{timeseries}/sub-{sub}/sub-{sub}_task-{task}"
+            f"_space-{space}_{TSERIES_DESCRIPT[timeseries]}_timeseries.h5",
+        )
+        try:
+            sub_tseries = h5py.File(h5_path, "r")
+        except Exception as e:
+            msg = f"For {task}, you may need to run study.download() first "
+            msg += f"as {h5_path} does not exist."
+            raise RuntimeError(msg) from e            
+        sessions = list(sub_tseries.keys())
+        for ses in sessions:
+            runs = list(sub_tseries[ses].keys())
+            for run in runs:
+                yield dict(subject=sub, file_path=str(h5_path), session=ses, task=None, run=run)
 
 
 def load_bold_masked(

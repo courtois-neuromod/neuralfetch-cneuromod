@@ -9,6 +9,7 @@ license-files = ["LICENSE"]
 requires-python = ">=3.10"
 
 dependencies = [
+  "h5py>=3.9",
   "neuralfetch>=0.1.0",   # provides Datalad download backend + neuralset Study base
   "nibabel>=5.0",
   "pandas>=2.0",
@@ -74,6 +75,8 @@ show_error_codes = true
 
 [[tool.mypy.overrides]]
 module = [
+  "h5py",
+  "h5py.*",
   "nibabel",
   "nibabel.*",
   "nilearn",
