@@ -103,13 +103,25 @@ Alternatively, it can point to any folder that shares the study name (e.g., `/pa
 In either scenario, the study class resolves its subfolder structure automatically. 
 
 ```python
-# Download study files (requires SSH key + access).
+# Download study files (may require SSH key + access).
 # This step uses the `datalad get` command to download files selectively,
 # which can be slow. Consider running inside a tmux session.
 study.download()
 print(study.study_summary())
 
 # Load all events as a neuralset-compatible DataFrame
+events = study.run()
+```
+
+The Study class default is to track data from every subject who contributed to a dataset. Use the `subjects` parameter to restrict the data download, processing and batching to a selective subset of participants.
+E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+study = Friends(path="path/to/cneuromod.all", subjects=['01', '02'])
+
+study.download()
 events = study.run()
 ```
 
