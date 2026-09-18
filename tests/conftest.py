@@ -9,6 +9,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import h5py
 import nibabel as nib
 import numpy as np
 import pytest
@@ -87,46 +88,74 @@ def cneuromod_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
     Layout (one subject, one session, two runs for the ``friends`` task)::
 
         tmp/
-        └── Friends/
+        └── friends/
             ├── bids/
             │   ├── dataset_description.json
             │   └── sub-01/ses-001/func/
-            │       ├── sub-01_ses-001_task-friends_run-1_events.tsv
-            │       └── sub-01_ses-001_task-friends_run-2_events.tsv
+            │       ├── sub-01_ses-001_task-s01e01a_events.tsv
+            │       └── sub-01_ses-001_task-s01e01b_events.tsv
+            ├── timeseries/
+            │   └── timeseries/cneuromod26/sub-01/
+            │       └── sub-01_task-friends_space-MNI152NLin2009cAsym_atlas-cneuromod26_desc-1134Parcels_timeseries.h5
             └── fmriprep/
                 └── sub-01/ses-001/func/
-                    ├── sub-01_ses-001_task-friends_run-1_space-MNI152NLin2009cAsym_res-2_desc-preproc_bold.nii.gz
-                    ├── sub-01_ses-001_task-friends_run-1_space-MNI152NLin2009cAsym_res-2_desc-brain_mask.nii.gz
-                    ├── sub-01_ses-001_task-friends_run-1_desc-confounds_timeseries.tsv
-                    ├── sub-01_ses-001_task-friends_run-2_space-MNI152NLin2009cAsym_res-2_desc-preproc_bold.nii.gz
-                    └── sub-01_ses-001_task-friends_run-2_desc-confounds_timeseries.tsv
+                    ├── sub-01_ses-001_task-s01e01a_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+                    ├── sub-01_ses-001_task-s01e01a_desc-confounds_timeseries.tsv
+                    ├── sub-01_ses-001_task-s01e01b_space-MNI152NLin2009cAsym_desc-preproc_bold.nii.gz
+                    └── sub-01_ses-001_task-s01e01b_desc-confounds_timeseries.tsv
 
     Returns
     -------
     Path
         Root directory used as ``path`` argument for study classes.
     """
-    root = tmp_path_factory.mktemp("cneuromod_root")
+    root = tmp_path_factory.mktemp("cneuromod.all")
 
     SUBJECT = "01"
     SESSION = "001"
-    TASK = "friends"
+    DSET = "friends"
+    # Base for Fiends episodes
+    TASK = "s01e01{episode_seg}"    
     SPACE = "MNI152NLin2009cAsym"
-    RES = "2"
+    TIMESERIES = "cneuromod2026"
+    ATLAS = "cneuromod26"
+    DESC = "1134Parcels"
     N_VOLS = 20
 
-    for run in (1, 2):
+
+    # Timeseries nested .HDF5
+    tseries = (
+        root / "friends" / "timeseries" / "timeseries"
+        / TIMESERIES / f"sub-{SUBJECT}" 
+        / f"sub-{SUBJECT}_task-{DSET}_space-{SPACE}"
+          f"_atlas-{ATLAS}_desc-{DESC}_timeseries.h5"
+    )
+    tseries.parent.mkdir(parents=True)
+
+    for epi_seg in ("a", "b"):
         # fMRIPrep BOLD
+        RUN = TASK.format(episode_seg=epi_seg)
+
+        flag = "a" if tseries.exists() else "w"
+        with h5py.File(tseries, flag) as f:
+            ses_group = f.create_group(
+                f"ses-{SESSION}"
+            ) if f"ses-{SESSION}" not in f else f[f"ses-{SESSION}"]
+            ses_group.create_dataset(
+                f"ses-{SESSION}_task-{RUN}_timeseries",
+                data=np.zeros((10, 10))
+            )
+
         bold = (
-            root / "Friends" / "fmriprep"
+            root / "friends" / "fmriprep"
             / f"sub-{SUBJECT}" / f"ses-{SESSION}" / "func"
-            / f"sub-{SUBJECT}_ses-{SESSION}_task-{TASK}_run-{run}"
-              f"_space-{SPACE}_res-{RES}_desc-preproc_bold.nii.gz"
+            / f"sub-{SUBJECT}_ses-{SESSION}_task-{RUN}"
+              f"_space-{SPACE}_desc-preproc_bold.nii.gz"
         )
         _write_nifti(bold, shape=(10, 10, 10, N_VOLS))
 
-        # Brain mask (run-1 only)
-        if run == 1:
+        # Brain mask (half episode "a" only)
+        if epi_seg == "a":
             mask = bold.parent / bold.name.replace(
                 "desc-preproc_bold", "desc-brain_mask"
             )
@@ -139,24 +168,25 @@ def cneuromod_root(tmp_path_factory: pytest.TempPathFactory) -> Path:
 
         # Confounds TSV
         conf = bold.parent / (
-            f"sub-{SUBJECT}_ses-{SESSION}_task-{TASK}_run-{run}"
+            f"sub-{SUBJECT}_ses-{SESSION}_task-{RUN}"
             "_desc-confounds_timeseries.tsv"
         )
         _write_confounds_tsv(conf, n_volumes=N_VOLS)
 
         # BIDS events TSV
         events = (
-            root / "Friends" / "bids"
+            root / "friends" / "bids"
             / f"sub-{SUBJECT}" / f"ses-{SESSION}" / "func"
-            / f"sub-{SUBJECT}_ses-{SESSION}_task-{TASK}_run-{run}_events.tsv"
+            / f"sub-{SUBJECT}_ses-{SESSION}_task-{RUN}_events.tsv"
         )
         _write_events_tsv(events)
 
     # Minimal dataset_description.json (required by BIDS validators)
-    desc = root / "Friends" / "bids" / "dataset_description.json"
+    desc = root / "friends" / "bids" / "dataset_description.json"
     desc.parent.mkdir(parents=True, exist_ok=True)
     desc.write_text(
-        json.dumps({"Name": "Friends-test", "BIDSVersion": "1.7.0"})
+        json.dumps({"Name": "friends-test", "BIDSVersion": "1.7.0"})
     )
 
     return root
+
