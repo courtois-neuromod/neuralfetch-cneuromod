@@ -13,6 +13,7 @@ load fMRIPrep-preprocessed BOLD fMRI and associated stimuli for all CNeuroMod da
 | `Emotion-videos` | Cohen & Keltner emotion-evoking videos | Visual movie |
 | `Floc` | Functional localizer (fLoc) | Semantic image categories |
 | `Friends` | Friends TV show seasons 1-6 | Audio-visual movie |
+| `Gamepad` | Video-controller button pressing | Motor |
 | `HarryPotter` | Harry Potter book chapter | Written narrative |
 | `HcpTrt` | HCP-style test-retest | Multimodal |
 | `Mario` | Super Mario Bros gameplay | Video game |

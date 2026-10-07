@@ -15,6 +15,8 @@ References
 from __future__ import annotations
 
 import typing as tp
+import numpy as np
+
 
 from neuralfetch_cneuromod.base import CNeuroModStudy
 

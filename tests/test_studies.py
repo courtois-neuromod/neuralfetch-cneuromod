@@ -22,10 +22,10 @@ import pytest
 
 from neuralfetch_cneuromod.studies import (
     #EmotionVideos, Floc,
-    Friends, HarryPotter, #HcpTrt,
+    Friends, Gamepad, HarryPotter, #HcpTrt,
     Mario, Mario3, MarioStars, Movie10,
-    #Narratives, OOD,
-    PetitPrince, #Retinotopy,
+    #Narratives, 
+    OOD, PetitPrince, #Retinotopy,
     Shinobi, #Things, #Triplets,
 )
 
