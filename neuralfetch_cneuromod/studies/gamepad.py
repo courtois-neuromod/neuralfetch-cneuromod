@@ -98,8 +98,9 @@ class Gamepad(CNeuroModStudy):
             },
         ]
         if not np.isnan(row["key_press_time"]):
-            # key press duration sometimes not logged for short button presses
+            # key press duration sometimes not logged for short button presses; odd cases w negative key durations
             key_duration = 0.15 if np.isnan(row["key_duration"]) else float(row["key_duration"])
+            key_duration = 0.15 if key_duration < 0 else key_duration
             events.append(
                 {
                     "type": "Action",
