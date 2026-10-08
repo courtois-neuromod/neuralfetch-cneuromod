@@ -113,7 +113,7 @@ print(study.study_summary())
 events = study.run()
 ```
 
-The Study class default is to track data from every subject who contributed to a dataset. Use the `subjects` parameter to restrict the data download, processing and batching to a selective subset of participants.
+The Study class default is to track data from every subject who contributed to a dataset. You can use the `subjects` parameter to restrict the data download, processing and batching to a selective subset of participants.
 E.g., 
 
 ```python
@@ -124,6 +124,24 @@ study = Friends(path="path/to/cneuromod.all", subjects=['01', '02'])
 study.download()
 events = study.run()
 ```
+
+For greater flexibility, for example to restrict download and batching to a single subject or even session, you can use the class quiery function instead. E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+# restrict to sub-01
+study = Friends(
+    path="path/to/cneuromod.all", query='subject == "Movie10/01"')
+#  restrict to sub-01, ses-01
+study = Friends(
+    path="path/to/cneuromod.all",
+    query='subject == "Movie10/01" and session == "ses-001"')
+
+study.download()
+events = study.run()
+```
+
 
 By default, the Study class tracks fMRI data pre-processed with fMRIprep. Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
 E.g., 
