@@ -103,7 +103,7 @@ Alternatively, it can point to any folder that shares the study name (e.g., `/pa
 In either scenario, the study class resolves its subfolder structure automatically. 
 
 ```python
-# Download study files (requires SSH key + access).
+# Download study files (may require SSH key + access).
 # This step uses the `datalad get` command to download files selectively,
 # which can be slow. Consider running inside a tmux session.
 study.download()
@@ -112,6 +112,36 @@ print(study.study_summary())
 # Load all events as a neuralset-compatible DataFrame
 events = study.run()
 ```
+
+The Study class default is to track data from every subject who contributed to a dataset. You can use the `subjects` parameter to restrict the data download, processing and batching to a selective subset of participants.
+E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+study = Friends(path="path/to/cneuromod.all", subjects=['01', '02'])
+
+study.download()
+events = study.run()
+```
+
+For greater flexibility, for example to restrict download and batching to a single subject or even session, you can use the class query function instead. E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+# restrict to sub-01
+study = Friends(
+    path="path/to/cneuromod.all", query='subject == "Movie10/01"')
+#  restrict to sub-01, ses-01
+study = Friends(
+    path="path/to/cneuromod.all",
+    query='subject == "Movie10/01" and session == "ses-001"')
+
+study.download()
+events = study.run()
+```
+
 
 By default, the Study class tracks fMRI data pre-processed with fMRIprep. Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
 E.g., 
