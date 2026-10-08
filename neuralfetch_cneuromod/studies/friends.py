@@ -11,7 +11,7 @@ repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/friends.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/friends.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/friends
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/friends.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/friends.timeseries

@@ -13,7 +13,7 @@ the raw BIDS repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/mariostars.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/mariostars.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/mariostars
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/mariostars.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/mariostars.timeseries

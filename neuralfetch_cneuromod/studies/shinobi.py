@@ -6,7 +6,7 @@ Game frame videos and gamepad inputs are stored in the raw BIDS repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/shinobi.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/shinobi.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/shinobi
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/shinobi.fmriprep
 """

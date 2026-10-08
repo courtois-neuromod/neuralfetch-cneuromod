@@ -10,7 +10,7 @@ Each movie was split into multiple BOLD runs of ~10-minute each.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/movie10.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/movie10.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/movie10
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/movie10.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/movie10.timeseries

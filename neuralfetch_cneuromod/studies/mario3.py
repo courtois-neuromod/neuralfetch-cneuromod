@@ -17,7 +17,7 @@ the raw BIDS repository.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/mario3.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/mario3.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/mario3
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/mario3.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/mario3.timeseries

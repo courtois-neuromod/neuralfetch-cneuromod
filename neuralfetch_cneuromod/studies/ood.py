@@ -1,18 +1,18 @@
 """OOD movie-watching fMRI dataset.
 
-Four subjects watched segments from a variety of movies and TV shows (Black and white
-silent film "The Pawn Shop" (1916), stick figure animated short "World of Tomorrow" (2015),
-and extracts from BBC Documentary series "Planet Earth" (2006, episode 2, "Mountains"),
-from animated film "Princess Mononoke" (1997), from Hollywood movie "Pulp Fiction" (1994)
-and from French-Canadian children's show "Passe-Partout" (1979; episodes #94 "Bon
-Coup, Mauvais Coup" and #95 "Cause et Effet"), totalling ~2 hours of movie watching
+Four subjects (sub-01, sub-02, sub-03 and sub-06) watched segments from a variety of movies 
+and TV shows (Black and white silent film "The Pawn Shop" (1916), stick figure animated short 
+"World of Tomorrow" (2015), and extracts from BBC Documentary series "Planet Earth" (2006, 
+episode 2, "Mountains"), from animated film "Princess Mononoke" (1997), from Hollywood movie 
+"Pulp Fiction" (1994) and from French-Canadian children's show "Passe-Partout" (1979; episodes 
+#94 "Bon Coup, Mauvais Coup" and #95 "Cause et Effet"), totalling ~2 hours of movie watching
 (~20 minutes per movie/show) while undergoing 3T fMRI.
 
 Each movie was split into two BOLD runs of 8-12 minutes each.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/ood.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/ood.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/ood
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/ood.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/ood.timeseries

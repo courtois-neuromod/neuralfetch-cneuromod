@@ -1,12 +1,13 @@
 """Gamepad motor task fMRI dataset.
 
-Four subjects performed button-pressing motor task on an MRI-compatible videogame
-controller (i.e., a gamepad) while undergoing 3T fMRI. Different fingers from both
-hands were cued for short and long button-presses.
+Four subjects (sub-01, sub-02, sub-03 and sub-06) performed button-pressing 
+motor task on an MRI-compatible videogame controller (i.e., a gamepad) while 
+undergoing 3T fMRI. Different fingers from both hands were cued for short and 
+long button-presses.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/gamepad.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/gamepad.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/gamepad
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/gamepad.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/gamepad.timeseries
@@ -83,9 +84,10 @@ class Gamepad(CNeuroModStudy):
         row: pd.Series,
     ) -> list[dict[str, tp.Any]]:
         """."""
-        events: dict[str, tp.Any] =  [
+        events: list[dict[str, tp.Any]] =  [
             {
                 "type": "Stimulus",
+                #"code": int,  # TODO: define code? default -100, ignored by cross-entropy loss
                 "start": float(row["onset"]),
                 "duration": float(row["duration"]),
                 "modality": "visual",
@@ -104,6 +106,7 @@ class Gamepad(CNeuroModStudy):
             events.append(
                 {
                     "type": "Action",
+                    #"code": int,  # TODO: define code? default -100, ignored by cross-entropy loss
                     "start": float(row["key_press_time"]),
                     "duration": key_duration,
                     "description": f"key-{row['key']}_hand-{row['lr_condition']}_len-{row['condition']}",

@@ -15,7 +15,7 @@ administered across multiple sessions for each subject.
 
 References
 ----------
-* CNeuroMod documentation: https://docs.cneuromod.ca/latest/datasets/petit-prince.html
+* CNeuroMod documentation: https://docs.cneuromod.ca/datasets/petit-prince.html
 * DataLad BIDS repo: https://github.com/courtois-neuromod/petit-prince
 * DataLad fMRIPrep repo: https://github.com/courtois-neuromod/petit-prince.fmriprep
 * DataLad timeseries repo: https://github.com/courtois-neuromod/petit-prince.timeseries
