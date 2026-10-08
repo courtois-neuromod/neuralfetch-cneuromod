@@ -125,7 +125,7 @@ study.download()
 events = study.run()
 ```
 
-For greater flexibility, for example to restrict download and batching to a single subject or even session, you can use the class quiery function instead. E.g., 
+For greater flexibility, for example to restrict download and batching to a single subject or even session, you can use the class query function instead. E.g., 
 
 ```python
 from neuralfetch_cneuromod.studies.friends import Friends
