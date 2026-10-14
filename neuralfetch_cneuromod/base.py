@@ -75,12 +75,15 @@ class CNeuroModStudy(_study.Study):
         Alternatively, *path* can point directly to the study-level directory
         (i.e. the one that contains ``bids/`` and ``fmriprep/`` sub-dirs).
     space:
-        fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``).
+        fMRIPrep output space template (default ``"MNI152NLin2009cAsym"``). Options include 
+        ``"MNI152NLin2009cAsym"`` (volumetric MNI space), ``"T1w"`` (volumetric native space),
+        and ``"fsLR"`` (CIFTI/HCP 91k grayordinates surface space).
     timeseries:
         Define to model pre-extracted, masked, denoised and normalized timeseries, 
         rather than the fMRIPrep BOLD derivatives. Select among ``"cneuromod2026"``, 
         ``"schaefer1000"`` (algonauts 2025 competition), ``"voxel_mni"`` or ``"voxel_native"``.
-        (default ``None``) .
+        (default ``None``). Note that ``"voxel_native"`` timeseries are in ``"T1w"`` space, 
+        while all other timeseries are in ``"MNI152NLin2009cAsym"`` space.
     subjects:
         Restrict data loading to a subset of subject labels
         (without ``sub-`` prefix).  ``None`` includes all available subjects.
@@ -143,7 +146,7 @@ class CNeuroModStudy(_study.Study):
     # -----------------------------------------------------------------
 
     #: fMRIPrep output space template.
-    space: str | None = _utils.DEFAULT_SPACE
+    space: tp.Literal["MNI152NLin2009cAsym", "T1w", "fsLR"] | None = _utils.DEFAULT_SPACE
     #: Define to model pre-extracted timeseries rather than fMRIprep output
     timeseries: str | None = None
     #: Restrict to a subset of subjects (labels without ``sub-`` prefix).
@@ -318,7 +321,12 @@ class CNeuroModStudy(_study.Study):
         """Build fMRIPrep derivative glob patterns for the configured space.
 
         Only files required for analysis in the configured output space are
-        targeted:
+        targeted. If self.space is ``fsLR`` (HCP 91k grayordinates surface space):
+
+        * ``den-91k_bold.dtseries.nii`` — preprocessed BOLD
+        * ``desc-confounds_timeseries.tsv`` — nuisance confound regressors
+
+        If self.space is ``MNI152NLin2009cAsym`` or ``T1w`` (MNI/native volume):
 
         * ``desc-preproc_bold.nii.gz`` — preprocessed BOLD in ``space``
         * ``desc-confounds_timeseries.tsv`` — nuisance confound regressors
@@ -336,28 +344,33 @@ class CNeuroModStudy(_study.Study):
         space = f"space-{self.space}"
         patterns = []
         for sub in self._subject_globs():
+            if 'fsLR' in space:
+                patterns.extend([
+                    # Preprocessed BOLD in the target space
+                    f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
+                    f"task-*_{space}_den-91k_bold.dtseries.nii",
+                ])
+            else:
+                patterns.extend([
+                    # Preprocessed BOLD in the target space
+                    f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
+                    f"task-*_{space}_desc-preproc_bold.nii.gz",
+                    
+                    # Brain mask in the target space
+                    f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
+                    f"task-*_{space}_desc-brain_mask.nii.gz",
+                ])
+
             patterns.extend([
-                # Preprocessed BOLD in the target space
-                f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
-                f"task-*_{space}_desc-preproc_bold.nii.gz",
-                
                 # Confound regressors
                 f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
                 f"task-*_desc-confounds_timeseries.tsv",
-                
-                # Brain mask in the target space
-                f"{self._fmriprep_dir}/{sub}/ses-*/func/{sub}_ses-*_"
-                f"task-*_{space}_desc-brain_mask.nii.gz",
             ])
+
         return patterns
 
     def _timeseries_download_patterns(self) -> list[str]:
         """Build timeseries derivative glob patterns for the configured space.
-
-        Only files required for analysis in the configured output space are
-        targeted:
-
-        * ``desc-preproc_bold.nii.gz`` — preprocessed BOLD in ``space``
 
         All patterns are restricted to the timeseries specified by :attr:`timeseries`, 
         and to the subjects given by :attr:`subjects` (or all subjects when 
@@ -397,7 +410,7 @@ class CNeuroModStudy(_study.Study):
           matching the configured subjects are fetched.  Stimuli are
           left as git-annex pointers.
         * **fMRIPrep** — cloned; only the preprocessed BOLD, confounds TSV,
-          and brain mask for the configured subjects are fetched.
+          and (for volume only) brain mask for the configured subjects are fetched.
         * **timeseries** — cloned; only the .hdf5 files, with timeseries nested per
         session and run, are fecthed for the configured ``timeseries`` and subjects 
         are fetched.
@@ -500,7 +513,8 @@ class CNeuroModStudy(_study.Study):
                 f"BOLD file not found: {bp}\n"
                 "Run study.download() or datalad get to fetch the content."
             )
-        return bp, nib.load(str(bp)).shape[-1]
+        dur_dim = 0 if self.space =='fsLR' else -1
+        return bp, nib.load(str(bp)).shape[dur_dim]
 
 
     def _get_tseries_dur(self, timeline: dict[str, tp.Any]) -> tuple[str, int]:
@@ -659,16 +673,23 @@ class CNeuroModStudy(_study.Study):
         tr_s = _utils.DEFAULT_TR
         if self.timeseries is None:
             bold_path, n_TRs = self._get_scan_dur(timeline)
+            mpath = None if self.space =='fsLR' else bold_path.replace(
+                "preproc_bold.", "brain_mask.") 
             fmri_row: dict[str, tp.Any] = {
                 "type": "Fmri",
                 "start": 0.0,
                 "duration": float(n_TRs) * tr_s,
                 "frequency": 1.0 / tr_s,
                 "filepath": bold_path,
-                "mask_filepath": bold_path.replace("preproc_bold.", "brain_mask."),
+                "mask_filepath": mpath,
                 "confounds_filepath": bold_path.replace(
-                    f"_space-{self.space}_desc-preproc_bold.nii.gz",
-                    "_desc-confounds_timeseries.tsv"),
+                    f"_space-{self.space}", "").replace(
+                        "_desc-preproc_bold.nii.gz",
+                        "_desc-confounds_timeseries.tsv"
+                    ).replace(
+                        "_den-91k_bold.dtseries.nii",
+                        "_desc-confounds_timeseries.tsv"
+                    ),
                 "space": self.space,
                 "preproc": "fmriprep",
             }
