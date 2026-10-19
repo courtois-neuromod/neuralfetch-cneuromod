@@ -113,7 +113,20 @@ print(study.study_summary())
 events = study.run()
 ```
 
-By default, the Study class tracks fMRI data pre-processed with fMRIprep. Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
+By default, the Study class tracks fMRI data pre-processed with fMRIprep and standardized to MNI (`MNI152NLin2009cAsym`) space. You can use the `space` parameter to modify this default. Other options are fMRI data in native subject space (`T1w`) and in CIFTI / HCP 91k grayordinates surface space (`fsLR`).
+
+E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+study = Friends(path="path/to/cneuromod.all", space='fsLR')
+
+study.download()
+events = study.run()
+```
+
+BOLD data are also available as pre-masked, pre-denoised fMRI timeseries saved as arrays in nested .hdf5 files. You can use the `timeseries` parameter to specify which timeseries to track. Options include `cneuromod2026` and `schaefer1000` parcel-wise timeseries (both in `MNI152NLin2009cAsym` space), and `voxel_mni` (`MNI152NLin2009cAsym` space) and `voxel_native` (`T1w` space) voxel-wise timeseries. See documentation [here](https://github.com/courtois-neuromod/cneuromod.all/blob/main/TIMESERIES.md).
 E.g., 
 
 ```python

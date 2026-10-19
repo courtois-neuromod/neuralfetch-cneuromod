@@ -134,12 +134,12 @@ def get_bold_runs(
     if not sub_dir.exists():
         return []
 
-    pattern_parts = [
-        f"sub-{subject}_ses-{session}_task-*",
-        f"_space-{space}_desc-preproc_bold.nii.gz",
-    ]
-    
-    pattern = "".join(pattern_parts)
+    if space =='fsLR':
+        ftype = 'den-91k_bold.dtseries.nii'
+    else: 
+        ftype = 'desc-preproc_bold.nii.gz'
+    pattern = f"sub-{subject}_ses-{session}_task-*_space-{space}_{ftype}"
+
     bold_files = sorted(sub_dir.glob(pattern))
     runs = []
     for f in bold_files:
