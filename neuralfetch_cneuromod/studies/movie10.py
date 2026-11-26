@@ -1,8 +1,8 @@
 """Movie10 movie-watching fMRI dataset.
 
-Six subjects watched three Hollywood feature films ("The Bourne Supremacy" (2004), 
-"The Wolf of Wall Street" (2013), "Hidden Figures" (2016)) and one BBC nature documentary 
-("Life : Challenges of life, reptiles and amphibian mammals" (2009)) totalling ~10 hours of 
+Six subjects watched three Hollywood feature films ("The Bourne Supremacy" (Greengrass, 2004), 
+"The Wolf of Wall Street" (Scorsese, 2013), "Hidden Figures" (Melfi, 2016)) and one nature documentary 
+("Life : Challenges of life, reptiles and amphibian mammals" (BBC, 2009)) totalling ~10 hours of 
 movie watching while undergoing 3T fMRI.
 
 Hidden Figure and Life were both visioned twice to support reproducibility analyses.

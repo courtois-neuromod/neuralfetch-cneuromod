@@ -1,12 +1,13 @@
 """OOD movie-watching fMRI dataset.
 
 Four subjects watched segments from a variety of movies and TV shows (Black and white
-silent film "The Pawn Shop" (1916), stick figure animated short "World of Tomorrow" (2015),
-and extracts from BBC Documentary series "Planet Earth" (2006, episode 2, "Mountains"),
-from animated film "Princess Mononoke" (1997), from Hollywood movie "Pulp Fiction" (1994)
-and from French-Canadian children's show "Passe-Partout" (1979; episodes #94 "Bon
-Coup, Mauvais Coup" and #95 "Cause et Effet"), totalling ~2 hours of movie watching
-(~20 minutes per movie/show) while undergoing 3T fMRI.
+silent film "The Pawn Shop" (Chaplin, 1916), stick figure animated short "World of 
+Tomorrow" (Hertzfeldt, 2015), and extracts from BBC Documentary series "Planet Earth" 
+(episode 2, "Mountains"; BBC, 2006), from animated film "Princess Mononoke" (Miyazaki, 
+1997), from neo-noir crime comedy "Pulp Fiction" (Tarantino, 1994) and from French-Canadian
+children's show "Passe-Partout" (Lachance, 1979; episodes #94 "Bon Coup, Mauvais Coup" and 
+#95 "Cause et Effet"), totalling ~2 hours of movie watching (~20 minutes per movie/show) 
+while undergoing 3T fMRI.
 
 Each movie was split into two BOLD runs of 8-12 minutes each.
 
