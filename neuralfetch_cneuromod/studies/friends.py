@@ -1,6 +1,6 @@
 """Friends TV show fMRI dataset.
 
-Six subjects watched episodes from the Friends sitcom while while undergoing 3T fMRI. 
+Six subjects watched episodes from the Friends sitcom (Crane & Kauffman, 1994–2004) while while undergoing 3T fMRI. 
 One subject (``sub-04``) watched seasons 1-4, while the remaining five subjects watched 
 seasons 1-6 (totalling >50 hours of audio-visual stimulation).
 
