@@ -103,7 +103,7 @@ Alternatively, it can point to any folder that shares the study name (e.g., `/pa
 In either scenario, the study class resolves its subfolder structure automatically. 
 
 ```python
-# Download study files (requires SSH key + access).
+# Download study files (may require SSH key + access).
 # This step uses the `datalad get` command to download files selectively,
 # which can be slow. Consider running inside a tmux session.
 study.download()
@@ -113,20 +113,41 @@ print(study.study_summary())
 events = study.run()
 ```
 
-By default, the Study class tracks fMRI data pre-processed with fMRIprep and standardized to MNI (`MNI152NLin2009cAsym`) space. You can use the `space` parameter to modify this default. Other options are fMRI data in native subject space (`T1w`) and in CIFTI / HCP 91k grayordinates surface space (`fsLR`).
+By default, the Study class tracks fMRI data pre-processed with fMRIprep and standardized to MNI (`MNI152NLin2009cAsym`) space. You can use the `subjects` parameter to restrict the data download, processing and batching to a selective subset of participants. You can use the `space` parameter to modify this default. Other options are fMRI data in native subject space (`T1w`) and in CIFTI / HCP 91k grayordinates surface space (`fsLR`).
 
 E.g., 
 
 ```python
 from neuralfetch_cneuromod.studies.friends import Friends
 
-study = Friends(path="path/to/cneuromod.all", space='fsLR')
+study = Friends(path="path/to/cneuromod.all", space='fsLR', subjects=['01', '02'])
 
 study.download()
 events = study.run()
 ```
 
 BOLD data are also available as pre-masked, pre-denoised fMRI timeseries saved as arrays in nested .hdf5 files. You can use the `timeseries` parameter to specify which timeseries to track. Options include `cneuromod2026` and `schaefer1000` parcel-wise timeseries (both in `MNI152NLin2009cAsym` space), and `voxel_mni` (`MNI152NLin2009cAsym` space) and `voxel_native` (`T1w` space) voxel-wise timeseries. See documentation [here](https://github.com/courtois-neuromod/cneuromod.all/blob/main/TIMESERIES.md).
+
+For greater flexibility, for example to restrict download and batching to a single subject or even session, you can use the class query function instead. E.g., 
+
+```python
+from neuralfetch_cneuromod.studies.friends import Friends
+
+# restrict to sub-01
+study = Friends(
+    path="path/to/cneuromod.all", query='subject == "Movie10/01"')
+#  restrict to sub-01, ses-01
+study = Friends(
+    path="path/to/cneuromod.all",
+    query='subject == "Movie10/01" and session == "ses-001"')
+
+study.download()
+events = study.run()
+```
+
+
+By default, the Study class tracks fMRI data pre-processed with fMRIprep. Use the `timeseries` parameter to track pre-masked, pre-denoised fMRI timeseries instead.
+
 E.g., 
 
 ```python
