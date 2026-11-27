@@ -317,8 +317,8 @@ class PetitPrince(CNeuroModAudioStudy):
             word_event : dict[str, tp.Any] = {
                 "type": "Word",
                 "text": word["word"],
-                "start": word["start"],
-                "stop": word["end"],
+                "start": word["start"] + 4.0,
+                "stop": word["end"] + 4.0,
                 "duration": word["end"] - word["start"],
                 "language": lang,
                 "modality": "heard",
@@ -330,8 +330,8 @@ class PetitPrince(CNeuroModAudioStudy):
             text_event : dict[str, tp.Any] = {
                 "type": "Text",
                 "text": transcript["transcript"],
-                "start": text_start,
-                "stop": text_stop,
+                "start": text_start + 4.0,
+                "stop": text_stop + 4.0,
                 "duration": text_stop - text_start,
                 "language": lang,
                 "modality": "heard",
